@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 224 82% 56%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 8% 46%;
+  --accent: 220 14% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 224 82% 56%;
+  --radius: 0.75rem;
+
+  /* 사이드바 변수 추가 */
+  --sidebar-background: 220 20% 97%;
+  --sidebar-foreground: 240 5% 26%;
+  --sidebar-border: 220 13% 91%;
+}
+
+/* 기본 스타일 개선 */
+body {
+  @apply bg-background text-foreground antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* 카드 스타일 개선 */
+.card {
+  @apply shadow-modern transition-all duration-200 hover:shadow-modern-lg;
+}
+
+/* 버튼 스타일 개선 */
+button,
+.btn {
+  @apply transition-all duration-200;
+}
+
+/* 테이블 스크롤 관련 스타일 */
+.table-container {
+  position: relative;
+  height: calc(100vh - 290px);
+  min-height: 410px;
+  width: 100%;
+  overflow: hidden;
+  @apply rounded-lg border border-border shadow-modern-sm;
+}
+
+.table-body {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: visible; /* 수직 스크롤만 활성화 */
+  -webkit-overflow-scrolling: touch; /* iOS에서 부드러운 스크롤 */
+}
+
+.table-wrapper {
+  min-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden; /* 수평 스크롤만 활성화 */
+  -webkit-overflow-scrolling: touch; /* iOS에서 부드러운 스크롤 */
+}
+
+/* 테이블 헤더 고정 */
+.table-container thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: hsl(var(--secondary));
+  @apply shadow-sm;
+}
+
+.table-container th {
+  @apply font-medium text-muted-foreground;
+}
+
+.table-container tr {
+  @apply transition-colors hover:bg-muted/30;
+}
+
+/* 애니메이션 스타일 */
+@keyframes slideFromRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0%);
+    opacity: 1;
+  }
+}
+
+.update-animation::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(34, 197, 94, 0.2);
+  z-index: -1;
+  animation: slideFromRight 0.8s ease-out forwards;
+}
+
+/* 프로그레스 바 애니메이션 */
+@keyframes shrinkLeftSuccess {
+  0% {
+    width: 100%;
+    opacity: 1;
+  }
+  100% {
+    width: 0;
+    opacity: 0.7;
+  }
+}
+
+@keyframes shrinkLeftError {
+  0% {
+    width: 100%;
+    opacity: 1;
+  }
+  100% {
+    width: 0;
+    opacity: 0.7;
+  }
+}
+
+.animate-shrink-left-success {
+  animation: shrinkLeftSuccess 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-shrink-left-error {
+  animation: shrinkLeftError 60s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 임박 상태의 배경색을 더 강조하기 위한 추가 스타일 */
+.bg-yellow-200 {
+  background-color: #fef08a !important;
+}
+
+.text-yellow-800 {
+  color: #854d0e !important;
+}
+
+/* 상태 배지 스타일 강화 */
+.status-badge {
+  @apply rounded-full px-2.5 py-0.5 text-xs font-medium transition-all;
+}
+
+/* 입력 필드 스타일 개선 */
+input,
+select,
+textarea {
+  @apply transition-all duration-200 focus:ring-2 focus:ring-primary/20;
+}
+
+/* 페이지 전환 애니메이션 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* 모달 애니메이션 개선 */
+.modal-content {
+  @apply shadow-modern-lg;
+}
