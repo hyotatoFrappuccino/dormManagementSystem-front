@@ -156,7 +156,7 @@ export function setStorageValue(key: string, value: any): void {
 }
 
 // CSV 변환 및 다운로드 유틸리티
-export function convertToCSV(data: any[], type: "payers" | "consents"): string {
+export function convertToCSV(data: any[], type: string): string {
   let headers, rows
 
   if (type === "payers") {
@@ -172,7 +172,7 @@ export function convertToCSV(data: any[], type: "payers" | "consents"): string {
       item.amount,
       item.type === "BANK_TRANSFER" ? "계좌이체" : "현장납부",
     ])
-  } else {
+  } else if (type === "consents") {
     // 서약서 CSV 헤더
     headers = ["ID", "학번", "이름", "전화번호", "건물", "호실", "제출일", "동의여부"]
 
@@ -182,11 +182,13 @@ export function convertToCSV(data: any[], type: "payers" | "consents"): string {
       item.studentId,
       item.name,
       item.phoneNumber,
-      item.building?.name || "",
+      item.buildingName,
       item.roomNumber,
       item.dateTime?.split("T")[0] || "",
       item.agreed === true ? "동의" : "미동의",
     ])
+  } else {
+    throw new Error("Invalid type");
   }
 
   // 헤더와 행 결합

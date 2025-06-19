@@ -289,9 +289,9 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
           rows: state.bulkRegistration.rows.map((row, index) =>
             index === action.payload.index
               ? {
-                  ...row,
-                  errors: { ...row.errors, [action.payload.field]: action.payload.value },
-                }
+                ...row,
+                errors: { ...row.errors, [action.payload.field]: action.payload.value },
+              }
               : row,
           ),
         },
@@ -381,6 +381,8 @@ const initialState: PayerState = {
 const PayerManagement = () => {
   // 상태 관리를 위한 리듀서 사용
   const [state, dispatch] = useReducer(payerReducer, initialState)
+
+  const [isSaving, setIsSaving] = useState(false)
 
   // 상태 구조 분해 할당
   const {
@@ -949,6 +951,8 @@ const PayerManagement = () => {
       return
     }
 
+    setIsSaving(true)
+
     try {
       const apitype = newPayerForm.type === "계좌이체" ? "BANK_TRANSFER" : "ON_SITE"
 
@@ -1000,6 +1004,8 @@ const PayerManagement = () => {
     } catch (error) {
       console.error("예상치 못한 오류:", error)
       setActionMessage("error", "예상치 못한 오류가 발생했습니다.")
+    } finally {
+      setIsSaving(false)
     }
   }, [
     newPayerForm,
@@ -1394,6 +1400,7 @@ const PayerManagement = () => {
   }, [])
 
   const saveBulkRegistration = useCallback(async () => {
+    setIsSaving(true)
     // 유효성 검사
     let hasErrors = false
     bulkRegistration.rows.forEach((row, index) => {
@@ -1413,6 +1420,7 @@ const PayerManagement = () => {
 
     if (hasErrors) {
       setActionMessage("error", "모든 필드를 올바르게 입력해주세요.")
+      setIsSaving(false)
       return
     }
 
@@ -1454,6 +1462,7 @@ const PayerManagement = () => {
       dispatch({ type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers })
 
       // 성공 메시지 및 다이얼로그 닫기
+      setIsSaving(false)
       setActionMessage("success", `${results.length}명의 납부자가 성공적으로 등록되었습니다.`)
       dispatch({ type: "RESET_BULK_REGISTRATION" })
       dispatch({ type: "SET_BULK_REGISTRATION", payload: { show: false } })
@@ -1468,6 +1477,7 @@ const PayerManagement = () => {
     } catch (error) {
       console.error("일괄 등록 중 오류:", error)
       setActionMessage("error", "일괄 등록 중 오류가 발생했습니다.")
+      setIsSaving(false)
     }
   }, [
     bulkRegistration.rows,
@@ -1690,66 +1700,66 @@ const PayerManagement = () => {
             >
               <table className="w-full border-collapse">
                 <thead className="bg-gray-50 sticky top-0 z-10">
-                  <tr>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      날짜
+                <tr>
+                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    날짜
+                  </th>
+                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    학번
+                  </th>
+                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    상태
+                  </th>
+                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    유형
+                  </th>
+                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    금액
+                  </th>
+                  {/* Add business columns - 필터링된 사업만 표시 */}
+                  {visibleBusinessList.map((business) => (
+                    <th
+                      key={`business-header-${business.id}`}
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap"
+                    >
+                      {business.name}
                     </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      학번
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      상태
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      유형
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      금액
-                    </th>
-                    {/* Add business columns - 필터링된 사업만 표시 */}
-                    {visibleBusinessList.map((business) => (
-                      <th
-                        key={`business-header-${business.id}`}
-                        className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap"
-                      >
-                        {business.name}
-                      </th>
-                    ))}
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      관리
-                    </th>
-                  </tr>
+                  ))}
+                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    관리
+                  </th>
+                </tr>
                 </thead>
                 <tbody>
-                  {isLoading && !isRefreshing ? (
-                    <tr>
-                      <td colSpan={6 + visibleBusinessList.length} className="text-center py-12">
-                        <div className="flex justify-center items-center h-64">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredPayers.length === 0 ? (
-                    <tr>
-                      <td colSpan={6 + visibleBusinessList.length} className="text-center py-4 text-gray-500">
-                        검색 결과가 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPayers.map((payer, index) => (
-                      <PayerRow
-                        key={`payer-${payer.id}-${index}`}
-                        payer={payer}
-                        index={index}
-                        isRecentlyUpdated={recentlyUpdated.includes(String(payer.id))}
-                        visibleBusinesses={visibleBusinessList}
-                        isUpdatingBusiness={isUpdatingBusiness}
-                        onEdit={handleEdit}
-                        toggleBusinessParticipation={toggleBusinessParticipation}
-                        isParticipatingInBusiness={isParticipatingInBusiness}
-                      />
-                    ))
-                  )}
+                {isLoading && !isRefreshing ? (
+                  <tr>
+                    <td colSpan={6 + visibleBusinessList.length} className="text-center py-12">
+                      <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredPayers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6 + visibleBusinessList.length} className="text-center py-4 text-gray-500">
+                      검색 결과가 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPayers.map((payer, index) => (
+                    <PayerRow
+                      key={`payer-${payer.id}-${index}`}
+                      payer={payer}
+                      index={index}
+                      isRecentlyUpdated={recentlyUpdated.includes(String(payer.id))}
+                      visibleBusinesses={visibleBusinessList}
+                      isUpdatingBusiness={isUpdatingBusiness}
+                      onEdit={handleEdit}
+                      toggleBusinessParticipation={toggleBusinessParticipation}
+                      isParticipatingInBusiness={isParticipatingInBusiness}
+                    />
+                  ))
+                )}
                 </tbody>
               </table>
             </div>
@@ -2004,7 +2014,16 @@ const PayerManagement = () => {
               <Button variant="outline" onClick={() => setDialog("new", false)}>
                 취소
               </Button>
-              <Button onClick={addNewPayer}>등록</Button>
+              <Button onClick={addNewPayer} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    등록 중...
+                  </>
+                ) : (
+                  "등록"
+                )}
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -2019,18 +2038,18 @@ const PayerManagement = () => {
           initialData={
             mobileForm.mode === "edit"
               ? {
-                  id: editForm.id,
-                  amount: editForm.amount,
-                  date: editForm.date,
-                  type: editForm.type as "계좌이체" | "현장납부",
-                  status: editForm.status as "PAID" | "REFUNDED",
-                }
+                id: editForm.id,
+                amount: editForm.amount,
+                date: editForm.date,
+                type: editForm.type as "계좌이체" | "현장납부",
+                status: editForm.status as "PAID" | "REFUNDED",
+              }
               : {
-                  id: "",
-                  amount: defaultAmount,
-                  date: new Date().toISOString().split("T")[0],
-                  type: "계좌이체" as "계좌이체" | "현장납부",
-                }
+                id: "",
+                amount: defaultAmount,
+                date: new Date().toISOString().split("T")[0],
+                type: "계좌이체" as "계좌이체" | "현장납부",
+              }
           }
           onSave={handleMobileFormSave}
           onDelete={mobileForm.mode === "edit" ? handleMobileFormDelete : undefined}
@@ -2064,130 +2083,130 @@ const PayerManagement = () => {
                 <div className="overflow-x-auto max-h-96">
                   <table className="w-full">
                     <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          학번/이름
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          금액
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          날짜
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          유형
-                        </th>
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          삭제
-                        </th>
-                      </tr>
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        학번/이름
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        금액
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        날짜
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        유형
+                      </th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        삭제
+                      </th>
+                    </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {bulkRegistration.rows.map((row, rowIndex) => (
-                        <tr key={row.id}>
-                          <td className="px-3 py-2">
-                            <Input
-                              value={row.name}
-                              onChange={(e) => {
-                                updateBulkRow(rowIndex, "name", e.target.value)
-                                if (row.errors.name) setBulkRowError(rowIndex, "name", false)
-                              }}
-                              className={cn(
-                                "h-8 text-sm",
-                                row.errors.name && "border-red-500 focus-visible:ring-red-500",
-                              )}
-                              placeholder="학번 또는 이름"
+                    {bulkRegistration.rows.map((row, rowIndex) => (
+                      <tr key={row.id}>
+                        <td className="px-3 py-2">
+                          <Input
+                            value={row.name}
+                            onChange={(e) => {
+                              updateBulkRow(rowIndex, "name", e.target.value)
+                              if (row.errors.name) setBulkRowError(rowIndex, "name", false)
+                            }}
+                            className={cn(
+                              "h-8 text-sm",
+                              row.errors.name && "border-red-500 focus-visible:ring-red-500",
+                            )}
+                            placeholder="학번 또는 이름"
+                            ref={(el) => {
+                              if (!bulkInputRefs.current[rowIndex]) {
+                                bulkInputRefs.current[rowIndex] = []
+                              }
+                              bulkInputRefs.current[rowIndex][0] = el
+                            }}
+                            onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 0)}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            type="number"
+                            value={newPayerForm.amount}
+                            onChange={(e) => {
+                              updateBulkRow(rowIndex, "amount", e.target.value)
+                              if (row.errors.amount) setBulkRowError(rowIndex, "amount", false)
+                            }}
+                            className={cn(
+                              "h-8 text-sm",
+                              row.errors.amount && "border-red-500 focus-visible:ring-red-500",
+                            )}
+                            ref={(el) => {
+                              if (!bulkInputRefs.current[rowIndex]) {
+                                bulkInputRefs.current[rowIndex] = []
+                              }
+                              bulkInputRefs.current[rowIndex][1] = el
+                            }}
+                            onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 1)}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input
+                            type="date"
+                            value={row.date}
+                            onChange={(e) => {
+                              updateBulkRow(rowIndex, "date", e.target.value)
+                              if (row.errors.date) setBulkRowError(rowIndex, "date", false)
+                            }}
+                            className={cn(
+                              "h-8 text-sm",
+                              row.errors.date && "border-red-500 focus-visible:ring-red-500",
+                            )}
+                            ref={(el) => {
+                              if (!bulkInputRefs.current[rowIndex]) {
+                                bulkInputRefs.current[rowIndex] = []
+                              }
+                              bulkInputRefs.current[rowIndex][2] = el
+                            }}
+                            onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 2)}
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <Select value={row.type} onValueChange={(value) => updateBulkRow(rowIndex, "type", value)}>
+                            <SelectTrigger
+                              className="h-8 text-sm"
                               ref={(el) => {
                                 if (!bulkInputRefs.current[rowIndex]) {
                                   bulkInputRefs.current[rowIndex] = []
                                 }
-                                bulkInputRefs.current[rowIndex][0] = el
+                                bulkInputRefs.current[rowIndex][3] = el
                               }}
-                              onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 0)}
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="number"
-                              value={newPayerForm.amount}
-                              onChange={(e) => {
-                                updateBulkRow(rowIndex, "amount", e.target.value)
-                                if (row.errors.amount) setBulkRowError(rowIndex, "amount", false)
-                              }}
-                              className={cn(
-                                "h-8 text-sm",
-                                row.errors.amount && "border-red-500 focus-visible:ring-red-500",
-                              )}
-                              ref={(el) => {
-                                if (!bulkInputRefs.current[rowIndex]) {
-                                  bulkInputRefs.current[rowIndex] = []
-                                }
-                                bulkInputRefs.current[rowIndex][1] = el
-                              }}
-                              onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 1)}
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Input
-                              type="date"
-                              value={row.date}
-                              onChange={(e) => {
-                                updateBulkRow(rowIndex, "date", e.target.value)
-                                if (row.errors.date) setBulkRowError(rowIndex, "date", false)
-                              }}
-                              className={cn(
-                                "h-8 text-sm",
-                                row.errors.date && "border-red-500 focus-visible:ring-red-500",
-                              )}
-                              ref={(el) => {
-                                if (!bulkInputRefs.current[rowIndex]) {
-                                  bulkInputRefs.current[rowIndex] = []
-                                }
-                                bulkInputRefs.current[rowIndex][2] = el
-                              }}
-                              onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 2)}
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <Select value={row.type} onValueChange={(value) => updateBulkRow(rowIndex, "type", value)}>
-                              <SelectTrigger
-                                className="h-8 text-sm"
-                                ref={(el) => {
-                                  if (!bulkInputRefs.current[rowIndex]) {
-                                    bulkInputRefs.current[rowIndex] = []
-                                  }
-                                  bulkInputRefs.current[rowIndex][3] = el
-                                }}
-                                onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 3)}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="계좌이체">계좌이체</SelectItem>
-                                <SelectItem value="현장납부">현장납부</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeBulkRow(rowIndex)}
-                              disabled={bulkRegistration.rows.length === 1}
-                              className="h-8 w-8 p-0"
-                              ref={(el) => {
-                                if (!bulkInputRefs.current[rowIndex]) {
-                                  bulkInputRefs.current[rowIndex] = []
-                                }
-                                bulkInputRefs.current[rowIndex][4] = el
-                              }}
-                              onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 4)}
+                              onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 3)}
                             >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="계좌이체">계좌이체</SelectItem>
+                              <SelectItem value="현장납부">현장납부</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeBulkRow(rowIndex)}
+                            disabled={bulkRegistration.rows.length === 1}
+                            className="h-8 w-8 p-0"
+                            ref={(el) => {
+                              if (!bulkInputRefs.current[rowIndex]) {
+                                bulkInputRefs.current[rowIndex] = []
+                              }
+                              bulkInputRefs.current[rowIndex][4] = el
+                            }}
+                            onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 4)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
                     </tbody>
                   </table>
                 </div>
@@ -2206,7 +2225,16 @@ const PayerManagement = () => {
             >
               취소
             </Button>
-            <Button onClick={saveBulkRegistration}>{bulkRegistration.rows.length}명 등록</Button>
+            <Button onClick={saveBulkRegistration} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                  등록 중...
+                </>
+              ) : (
+                `${bulkRegistration.rows.length}명 등록`
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

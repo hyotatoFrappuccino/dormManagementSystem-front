@@ -3,44 +3,28 @@
 import type React from "react"
 
 import { useState, useEffect, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  AlertCircle,
-  RefreshCw,
-  FileOutputIcon as FileExport,
-  AlertTriangle,
-  Pencil,
-  Trash2,
-  Plus,
-  X,
-  Loader2,
-} from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { API_PATHS } from "@/lib/api-config"
+
+// lib
 import type { Building, Administrator, AdminRole, Round, Payer, Consent, Business } from "@/lib/interfaces"
-import {
-  getBuildingTypeText as utilsGetBuildingTypeText,
-  calculateTotalSlots as utilsCalculateTotalSlots,
-  convertToCSV as utilsConvertToCSV,
-  downloadCSV as utilsDownloadCSV,
-  setStorageValue,
-  formatDate,
-} from "@/lib/utils"
+import { API_PATHS } from "@/lib/api-config"
 import { get, post, put, del } from "@/lib/api-client"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { getBuildingTypeText as utilsGetBuildingTypeText, calculateTotalSlots as utilsCalculateTotalSlots, convertToCSV as utilsConvertToCSV, downloadCSV, setStorageValue, formatDate } from "@/lib/utils"
+
+// components ui
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+import { AlertCircle, RefreshCw, FileOutputIcon as FileExport, AlertTriangle, Pencil, Trash2, Plus, X, Loader2 } from "lucide-react"
+
+import { useForm } from "react-hook-form"
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general")
@@ -84,14 +68,12 @@ export default function Settings() {
   const [buildingFridgeSlots, setBuildingFridgeSlots] = useState("")
   const [buildingFreezerSlots, setBuildingFreezerSlots] = useState("")
   const [buildingIntegratedSlots, setBuildingIntegratedSlots] = useState("")
-  const [isSavingBuilding, setIsSavingBuilding] = useState(false)
 
   // 관리자 다이얼로그 관련 상태
   const [isAdministratorDialogOpen, setIsAdministratorDialogOpen] = useState(false)
   const [administratorEmail, setAdministratorEmail] = useState("")
-  const [administratorName, setAdministratorName] = useState("") // 추가된 name 상태
+  const [administratorName, setAdministratorName] = useState("")
   const [administratorRole, setAdministratorRole] = useState("")
-  const [isSavingAdministrator, setIsSavingAdministrator] = useState(false)
   const [isEditAdminMode, setIsEditAdminMode] = useState(false)
   const [currentAdministrator, setCurrentAdministrator] = useState<Administrator | null>(null)
 
@@ -102,8 +84,7 @@ export default function Settings() {
   const [roundName, setRoundName] = useState("")
   const [roundStartDate, setRoundStartDate] = useState("")
   const [roundEndDate, setRoundEndDate] = useState("")
-  const [roundPassword, setRoundPassword] = useState("") // 비밀번호 상태 추가
-  const [isSavingRound, setIsSavingRound] = useState(false)
+  const [roundPassword, setRoundPassword] = useState("")
 
   // 건물 삭제 다이얼로그 관련 상태
   const [isDeleteBuildingDialogOpen, setIsDeleteBuildingDialogOpen] = useState(false)
@@ -125,7 +106,7 @@ export default function Settings() {
   const [showFreezerSlots, setShowFreezerSlots] = useState(false)
   const [showIntegratedSlots, setShowIntegratedSlots] = useState(false)
 
-  // 관리자 역할 목록 상태 추가 - 기본값 제거
+  // 관리자 역할 목록 상태
   const [adminRoles, setAdminRoles] = useState<AdminRole[]>([])
 
   // 사업 관련 상태
@@ -134,7 +115,6 @@ export default function Settings() {
   const [businessError, setBusinessError] = useState<string | null>(null)
   const [isBusinessDialogOpen, setIsBusinessDialogOpen] = useState(false)
   const [businessName, setBusinessName] = useState("")
-  const [isSavingBusiness, setIsSavingBusiness] = useState(false)
   const [isDeleteBusinessDialogOpen, setIsDeleteBusinessDialogOpen] = useState(false)
   const [businessToDelete, setBusinessToDelete] = useState<Business | null>(null)
   const [isDeletingBusiness, setIsDeletingBusiness] = useState(false)
@@ -312,79 +292,106 @@ export default function Settings() {
     }
   }
 
-  // 납부자 목록 CSV 내보내기 함수 수정
-  const handleExportPayerCSV = () => {
-    setIsExportingPayers(true)
+  // (납부자, 서약서) 목록 CSV 내보내기
+  const exportCSVData = async <T extends { id: number }>(
+    apiPath: string, type: string, fileNamePrefix: string, setIsExporting: (isExporting: boolean) => void
+  ) => {
+    setIsExporting(true)
+    try {
+      const data = await get<T[]>(apiPath)
+      const sortedData = data.sort((a, b) => a.id - b.id)
+      const csvContent = utilsConvertToCSV(sortedData, type)
 
-    const fetchAndExportData = async () => {
-      try {
-        // API 호출
-        const data = await get<Payer[]>(API_PATHS.PAYMENT)
+      // 한국 시간으로 날짜 및 시간 포맷
+      const now = new Date();
+      const kstOffset = now.getTimezoneOffset() * 60000; // 분 단위를 밀리초로 변환
+      const kstDate = new Date(now.getTime() - kstOffset);
+      const formattedDate = kstDate.toISOString().replace("T", "_").replace(/:/g, "-").split(".")[0];
 
-        // ID 오름차순으로 정렬
-        const sortedData = data.sort((a, b) => a.id - b.id)
-
-        // CSV 형식으로 변환
-        const csvContent = convertToCSV(sortedData, "payers")
-
-        // 파일 다운로드
-        downloadCSV(csvContent, `납부자_목록_${new Date().toISOString().split("T")[0]}.csv`)
-
-        setExportSuccess(true)
-      } catch (error) {
-        console.error("CSV 내보내기 중 오류 발생:", error)
-        setActionMessage({
-          type: "error",
-          message: `CSV 내보내기 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-        })
-      } finally {
-        setIsExportingPayers(false)
-      }
-    }
-
-    fetchAndExportData()
-  }
-
-  // 서약서 목록 CSV 내보내기 함수 수정
-  const handleExportConsentCSV = () => {
-    setIsExportingConsents(true)
-
-    const fetchAndExportData = async () => {
-      try {
-        // API 호출
-        const data = await get<Consent[]>(API_PATHS.SURVEY)
-
-        // ID 오름차순으로 정렬
-        const sortedData = data.sort((a, b) => a.id - b.id)
-
-        // CSV 형식으로 변환
-        const csvContent = convertToCSV(sortedData, "consents")
-
-        // 파일 다운로드
-        downloadCSV(csvContent, `서약서_목록_${new Date().toISOString().split("T")[0]}.csv`)
-
-        setExportSuccess(true)
-      } catch (error) {
-        console.error("CSV 내보내기 중 오류 발생:", error)
-        setActionMessage({
-          type: "error",
-          message: `CSV 내보내기 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-        })
-      } finally {
-        setIsExportingConsents(false)
-      }
-    }
-
-    fetchAndExportData()
-  }
-
-  // handleSave 함수 수정
-  const handleSave = async () => {
-    // 기본 납부 금액 검증
-    if (!default_amount || Number.parseInt(default_amount) <= 0) {
+      downloadCSV(csvContent, `${fileNamePrefix}_목록_${formattedDate}.csv`);
+      setExportSuccess(true)
+    } catch (error) {
+      console.error("CSV 내보내기 중 오류 발생:", error)
       setActionMessage({
         type: "error",
-        message: "유효한 기본 납부 금액을 입력해주세요.",
+        message: `CSV 내보내기 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // 납부자 목록 CSV 내보내기
+  const handleExportPayerCSV = () => {
+    exportCSVData<Payer>(API_PATHS.PAYMENT, "payers", "납부자", setIsExportingPayers)
+  }
+
+  // 서약서 목록 CSV 내보내기
+  const handleExportConsentCSV = () => {
+    exportCSVData<Consent>(API_PATHS.SURVEY, "consents", "서약서", setIsExportingConsents)
+  }
+
+  /**
+   * 저장 - 일반, 건물, 관리자, 회차, 사업
+   */
+    // 일반 탭 - 기본 납부 금액, 구글 시트 ID 저장
+  const handleGeneralSave = async () => {
+      // 기본 납부 금액 검증
+      if (!default_amount || Number.parseInt(default_amount) <= 0) {
+        setActionMessage({
+          type: "error",
+          message: "유효한 기본 납부 금액을 입력해주세요.",
+        })
+        return
+      }
+
+      setIsSaving(true)
+
+      try {
+        // 기본 납부 금액 저장
+        await post(API_PATHS.CONFIG_DEFAULT_AMOUNT, default_amount)
+
+        // 구글 시트 ID는 값이 있는 경우에만 API를 통해 저장
+        if (google_sheet_id && google_sheet_id.trim() !== "") {
+          await post(API_PATHS.CONFIG_GOOGLE_SHEET_ID, google_sheet_id.trim())
+        }
+
+        setSaveSuccess(true)
+        setActionMessage({
+          type: "success",
+          message: "성공적으로 저장되었습니다.",
+        })
+      } catch (error) {
+        console.error("Error saving settings:", error)
+        setActionMessage({
+          type: "error",
+          message: `설정 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
+        })
+      } finally {
+        setIsSaving(false)
+      }
+    }
+
+  // 건물 추가 버튼 클릭
+  const handleAddBuilding = () => {
+    // 초기화
+    setIsEditMode(false)
+    setCurrentBuilding(null)
+    setBuildingName("")
+    setBuildingType("ALL")
+    setBuildingFridgeSlots("0")
+    setBuildingFreezerSlots("0")
+    setBuildingIntegratedSlots("0")
+    setIsBuildingDialogOpen(true)
+  }
+
+  // 건물 저장 (추가 또는 수정)
+  const handleSaveBuilding = async () => {
+    // 입력 검증
+    if (!buildingName.trim()) {
+      setActionMessage({
+        type: "error",
+        message: "건물 이름을 입력해주세요.",
       })
       return
     }
@@ -392,38 +399,50 @@ export default function Settings() {
     setIsSaving(true)
 
     try {
-      // 기본 납부 금액 저장
-      await post(API_PATHS.CONFIG_DEFAULT_AMOUNT, default_amount)
+      const fridgeSlots = Number.parseInt(buildingFridgeSlots)
+      const freezerSlots = Number.parseInt(buildingFreezerSlots)
+      const integratedSlots = Number.parseInt(buildingIntegratedSlots)
 
-      // 구글 시트 ID는 값이 있는 경우에만 API를 통해 저장
-      if (google_sheet_id && google_sheet_id.trim() !== "") {
-        await post(API_PATHS.CONFIG_GOOGLE_SHEET_ID, google_sheet_id.trim())
+      if (isEditMode && currentBuilding) {
+        // 수정 모드 - PUT 요청
+        await put(API_PATHS.BUILDING_BY_ID(currentBuilding.id), {
+          name: buildingName,
+          type: buildingType,
+          fridgeSlots,
+          freezerSlots,
+          integratedSlots,
+        })
+      } else {
+        // 추가 모드 - POST 요청
+        await post(API_PATHS.BUILDING, {
+          name: buildingName,
+          type: buildingType,
+          fridgeSlots,
+          freezerSlots,
+          integratedSlots,
+        })
       }
 
-      setIsSaving(false)
-      setSaveSuccess(true)
+      // 성공 시 목록 다시 불러오기
+      await fetchBuildings()
+
+      // 다이얼로그 닫기
+      setIsBuildingDialogOpen(false)
       setActionMessage({
         type: "success",
-        message: "성공적으로 저장되었습니다.",
+        message: "건물이 성공적으로 저장되었습니다.",
       })
     } catch (error) {
-      console.error("Error saving settings:", error)
+      console.error("Error saving building:", error)
       setActionMessage({
         type: "error",
-        message: `설정 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
+        message: `건물 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
       })
+      // 오류 발생 시 다이얼로그 닫기
+      setIsBuildingDialogOpen(false)
+    } finally {
       setIsSaving(false)
     }
-  }
-
-  // 데이터를 CSV 형식으로 변환하는 함수
-  const convertToCSV = (data: any[], type: string) => {
-    return utilsConvertToCSV(data, type as "payers" | "consents")
-  }
-
-  // CSV 파일 다운로드 함수
-  const downloadCSV = (csvContent: string, filename: string) => {
-    utilsDownloadCSV(csvContent, filename)
   }
 
   // 초기화 다이얼로그 열기
@@ -502,19 +521,6 @@ export default function Settings() {
       setResetConfirmCount(0)
       setResetType(null)
     }
-  }
-
-  // 건물 추가 버튼 클릭
-  const handleAddBuilding = () => {
-    // 초기화
-    setIsEditMode(false)
-    setCurrentBuilding(null)
-    setBuildingName("")
-    setBuildingType("ALL")
-    setBuildingFridgeSlots("0")
-    setBuildingFreezerSlots("0")
-    setBuildingIntegratedSlots("0")
-    setIsBuildingDialogOpen(true)
   }
 
   // 회차 추가 버튼 클릭
@@ -683,102 +689,6 @@ export default function Settings() {
     setAdministratorToDelete(null)
   }
 
-  // 건물 저장 (추가 또는 수정)
-  const handleSaveBuilding = async () => {
-    // 입력 검증
-    if (!buildingName.trim()) {
-      setActionMessage({
-        type: "error",
-        message: "건물 이름을 입력해주세요.",
-      })
-      return
-    }
-
-    // 건물 타입에 따른 슬롯 검증
-    if (buildingType === "REFRIGERATOR" && Number.parseInt(buildingFridgeSlots) <= 0) {
-      setActionMessage({
-        type: "error",
-        message: "냉장고 전용 건물은 냉장 슬롯 수를 입력해야 합니다.",
-      })
-      return
-    }
-
-    if (buildingType === "FREEZER" && Number.parseInt(buildingFreezerSlots) <= 0) {
-      setActionMessage({
-        type: "error",
-        message: "냉동고 전용 건물은 냉동 슬롯 수를 입력해야 합니다.",
-      })
-      return
-    }
-
-    if (buildingType === "COMBINED" && Number.parseInt(buildingIntegratedSlots) <= 0) {
-      setActionMessage({
-        type: "error",
-        message: "통합형 전용 건물은 통합 슬롯 수를 입력해야 합니다.",
-      })
-      return
-    }
-
-    if (
-      buildingType === "ALL" &&
-      (Number.parseInt(buildingFridgeSlots) <= 0 || Number.parseInt(buildingFreezerSlots) <= 0)
-    ) {
-      setActionMessage({
-        type: "error",
-        message: "냉장+냉동 건물은 냉장 및 냉동 슬롯 수를 모두 입력해야 합니다.",
-      })
-      return
-    }
-
-    setIsSavingBuilding(true)
-
-    try {
-      const fridgeSlots = Number.parseInt(buildingFridgeSlots)
-      const freezerSlots = Number.parseInt(buildingFreezerSlots)
-      const integratedSlots = Number.parseInt(buildingIntegratedSlots)
-
-      if (isEditMode && currentBuilding) {
-        // 수정 모드 - PUT 요청
-        await put(API_PATHS.BUILDING_BY_ID(currentBuilding.id), {
-          name: buildingName,
-          type: buildingType,
-          fridgeSlots,
-          freezerSlots,
-          integratedSlots,
-        })
-      } else {
-        // 추가 모드 - POST 요청
-        await post(API_PATHS.BUILDING, {
-          name: buildingName,
-          type: buildingType,
-          fridgeSlots,
-          freezerSlots,
-          integratedSlots,
-        })
-      }
-
-      // 성공 시 목록 다시 불러오기
-      await fetchBuildings()
-
-      // 다이얼로그 닫기
-      setIsBuildingDialogOpen(false)
-      setActionMessage({
-        type: "success",
-        message: "건물이 성공적으로 저장되었습니다.",
-      })
-    } catch (error) {
-      console.error("Error saving building:", error)
-      setActionMessage({
-        type: "error",
-        message: `건물 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      // 오류 발생 시 다이얼로그 닫기
-      setIsBuildingDialogOpen(false)
-    } finally {
-      setIsSavingBuilding(false)
-    }
-  }
-
   // 회차 저장 (추가 또는 수정)
   const handleSaveRound = async () => {
     // 입력 검증
@@ -823,7 +733,7 @@ export default function Settings() {
       return
     }
 
-    setIsSavingRound(true)
+    setIsSaving(true)
 
     try {
       if (isEditRoundMode && currentRound) {
@@ -862,7 +772,7 @@ export default function Settings() {
       // 오류 발생 시 다이얼로그 닫기
       setIsRoundDialogOpen(false)
     } finally {
-      setIsSavingRound(false)
+      setIsSaving(false)
     }
   }
 
@@ -895,7 +805,7 @@ export default function Settings() {
       return
     }
 
-    setIsSavingAdministrator(true)
+    setIsSaving(true)
 
     try {
       if (isEditAdminMode && currentAdministrator && currentAdministrator.id !== undefined) {
@@ -932,7 +842,7 @@ export default function Settings() {
       // 오류 발생 시 다이얼로그 닫기
       setIsAdministratorDialogOpen(false)
     } finally {
-      setIsSavingAdministrator(false)
+      setIsSaving(false)
     }
   }
 
@@ -1035,7 +945,7 @@ export default function Settings() {
       return
     }
 
-    setIsSavingBusiness(true)
+    setIsSaving(true)
 
     try {
       // 추가 모드 - POST 요청 (사업 이름만 문자열로 전송)
@@ -1059,7 +969,7 @@ export default function Settings() {
       // 오류 발생 시 다이얼로그 닫기
       setIsBusinessDialogOpen(false)
     } finally {
-      setIsSavingBusiness(false)
+      setIsSaving(false)
     }
   }
 
@@ -1249,7 +1159,7 @@ export default function Settings() {
                 </div>
 
                 <div className="px-4 py-4 border-t">
-                  <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+                  <Button className="w-full" onClick={handleGeneralSave} disabled={isSaving}>
                     {isSaving ? (
                       <>
                         <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -1698,8 +1608,8 @@ export default function Settings() {
               <Button variant="outline" onClick={() => setIsBuildingDialogOpen(false)}>
                 취소
               </Button>
-              <Button onClick={handleSaveBuilding} disabled={isSavingBuilding}>
-                {isSavingBuilding ? (
+              <Button onClick={handleSaveBuilding} disabled={isSaving}>
+                {isSaving ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     저장 중...
@@ -1773,8 +1683,8 @@ export default function Settings() {
               <Button variant="outline" onClick={() => setIsRoundDialogOpen(false)}>
                 취소
               </Button>
-              <Button onClick={handleSaveRound} disabled={isSavingRound}>
-                {isSavingRound ? (
+              <Button onClick={handleSaveRound} disabled={isSaving}>
+                {isSaving ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     저장 중...
@@ -1842,8 +1752,8 @@ export default function Settings() {
               <Button variant="outline" onClick={() => setIsAdministratorDialogOpen(false)}>
                 취소
               </Button>
-              <Button onClick={handleSaveAdministrator} disabled={isSavingAdministrator}>
-                {isSavingAdministrator ? (
+              <Button onClick={handleSaveAdministrator} disabled={isSaving}>
+                {isSaving ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     저장 중...
@@ -2051,8 +1961,8 @@ export default function Settings() {
               <Button variant="outline" onClick={() => setIsBusinessDialogOpen(false)}>
                 취소
               </Button>
-              <Button onClick={handleSaveBusiness} disabled={isSavingBusiness}>
-                {isSavingBusiness ? (
+              <Button onClick={handleSaveBusiness} disabled={isSaving}>
+                {isSaving ? (
                   <>
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                     저장 중...
