@@ -70,7 +70,11 @@ const FridgeRow = memo(
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  onClick={() => onOpenDeleteDialog(item.member, null)}
+                  onClick={() => {
+                    requestAnimationFrame(() => {
+                      onOpenDeleteDialog(item.member, null)
+                    })
+                  }}
                   className="text-red-500 focus:text-red-500"
                   disabled={Object.keys(item.applications).length === 0}
                 >
