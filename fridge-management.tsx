@@ -2,11 +2,11 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
+import {useState, useEffect, useRef, useCallback, useMemo} from "react"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {Card, CardContent} from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -15,11 +15,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Search, Filter, RefreshCw, Trash2, X, AlertCircle } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useIsMobile } from "@/hooks/use-mobile"
+import {Search, Filter, RefreshCw, Trash2, AlertCircle} from "lucide-react"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover"
+import {Alert, AlertDescription} from "@/components/ui/alert"
+import {useIsMobile} from "@/hooks/use-mobile"
 import type {
   Building,
   Member,
@@ -28,12 +28,12 @@ import type {
   GroupedApplication,
   FridgeApplicationResponse,
 } from "@/lib/interfaces"
-import { getApplicationTypeText } from "@/lib/utils"
-import { Switch } from "@/components/ui/switch"
-import { get, del, post } from "@/lib/api-client"
-import { API_PATHS } from "@/lib/api-config"
+import {getApplicationTypeText, handleError, handleSuccess} from "@/lib/utils"
+import {Switch} from "@/components/ui/switch"
+import {get, del, post} from "@/lib/api-client"
+import {API_PATHS} from "@/lib/api-config"
 import FridgeRow from "@/components/fridge-row"
-import { useDebounce } from "use-debounce"
+import {useDebounce} from "use-debounce"
 
 export default function FridgeManagement() {
   // 상태 관리
@@ -42,10 +42,6 @@ export default function FridgeManagement() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [actionMessage, setActionMessage] = useState<{
-    type: "success" | "error"
-    message: string
-  } | null>(null)
 
   // 검색 및 필터 상태
   const [searchTerm, setSearchTerm] = useState("")
@@ -105,28 +101,25 @@ export default function FridgeManagement() {
       const roundsData = await get<Round[]>(API_PATHS.ROUNDS)
 
       // roundIds에 있는 회차만 필터링
-      const filteredRounds = roundsData.filter((round) => typeof round.id === "number" && roundIds.has(round.id))
+      const filteredRounds = roundsData.filter((round) => roundIds.has(round.id))
       setRounds(filteredRounds)
 
       processApplications(data, filteredRounds, mockBuildings)
+
+      // 새로고침이 완료되면 성공 메시지 표시
+      if (isRefresh) {
+        handleSuccess("새로고침되었습니다.")
+      }
     } catch (err) {
       console.error("냉장고 신청 데이터 로드 중 오류:", err)
       setError("데이터를 불러오는 중 오류가 발생했습니다.")
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
-
-      // 새로고침이 완료되면 성공 메시지 표시
-      if (isRefresh) {
-        setActionMessage({
-          type: "success",
-          message: "데이터가 성공적으로 새로고침되었습니다.",
-        })
-      }
     }
   }, [])
 
-  // 경고 추가/감소 함수
+  // 경고 추가/감소
   const handleWarningCountChange = useCallback(
     async (memberId: number | undefined, action: "increase" | "decrease") => {
       if (memberId === undefined) {
@@ -135,7 +128,6 @@ export default function FridgeManagement() {
       }
 
       try {
-        // fetch 대신 api-client의 post 함수 사용
         await post(`${API_PATHS.FRIDGE}/${memberId}/warningCount/${action}`, null)
 
         // 성공 - 서버에서 데이터를 다시 불러오는 대신 로컬 상태 업데이트
@@ -188,19 +180,9 @@ export default function FridgeManagement() {
           })
         })
 
-        setActionMessage({
-          type: "success",
-          message: `경고 ${action === "increase" ? "추가" : "감소"}가 성공적으로 처리되었습니다.`,
-        })
+        handleSuccess(`경고 ${action === "increase" ? "추가" : "감소"}가 성공적으로 반영되었습니다.`)
       } catch (err) {
-        console.error(`경고 ${action === "increase" ? "추가" : "감소"} 중 오류:`, err)
-        setActionMessage({
-          type: "error",
-          message:
-            err instanceof Error
-              ? err.message
-              : `경고 ${action === "increase" ? "추가" : "감소"} 중 오류가 발생했습니다.`,
-        })
+        handleError(error, `경고 ${action === "increase" ? "추가" : "감소"}`)
       }
     },
     [],
@@ -232,7 +214,7 @@ export default function FridgeManagement() {
           warningCount: item.warningCount,
         }
 
-        // 그룹화된 데이��� 초기화
+        // 그룹화된 데이터 초기화
         if (!groupedByMember[memberId]) {
           groupedByMember[memberId] = {
             member,
@@ -337,15 +319,6 @@ export default function FridgeManagement() {
     // No need to return anything from useEffect
   }, [fetchApplications])
 
-  // 알림 메시지 타이머
-  useEffect(() => {
-    if (!actionMessage) return
-
-    const timeout = setTimeout(() => setActionMessage(null), actionMessage.type === "error" ? 60000 : 3000)
-
-    return () => clearTimeout(timeout)
-  }, [actionMessage])
-
   // CSS 애니메이션 스타일 추가
   useEffect(() => {
     const style = document.createElement("style")
@@ -404,26 +377,16 @@ export default function FridgeManagement() {
           const memberIndex = updatedGrouped.findIndex((g) => g.member.id === memberId)
 
           if (memberIndex !== -1) {
-            const memberData = { ...updatedGrouped[memberIndex] }
+            const memberData = {...updatedGrouped[memberIndex]}
             delete memberData.applications[application.roundId]
             updatedGrouped[memberIndex] = memberData
           }
           return updatedGrouped
         })
 
-        // 회차 이름 찾기
-        const roundName = rounds.find((r) => r.id === application.roundId)?.name || "선���한 회차"
-
-        setActionMessage({
-          type: "success",
-          message: `${roundName} 냉장고 신청이 성공적으로 삭제되었습니다.`,
-        })
-      } catch (err) {
-        console.error("냉장고 신청 삭제 중 오류:", err)
-        setActionMessage({
-          type: "error",
-          message: err instanceof Error ? err.message : "삭제 중 오류가 발생했습니다.",
-        })
+        handleSuccess("성공적으로 삭제되었습니다.")
+      } catch (error) {
+        handleError(error, "냉장고 신청 삭제")
       } finally {
         setIsDeletingApplication(false)
         setIsDeleteDialogOpen(false)
@@ -492,13 +455,14 @@ export default function FridgeManagement() {
       case 1:
         return "!bg-yellow-100"
       case 2:
-        return "!bg-[rgb(255,204,128)]" // 사용자가 요청한 RGB 색상
+        return "!bg-[rgb(255,204,128)]"
       case 3:
-        return "!bg-[rgb(255,138,128)]" // 사용자가 요청한 RGB 색상
+        return "!bg-[rgb(255,138,128)]"
       default:
         return ""
     }
   }, [])
+
   // 검색어 변경 핸들러
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
@@ -506,33 +470,6 @@ export default function FridgeManagement() {
 
   return (
     <div className={`${getContainerWidthClass()} mx-auto`}>
-      {/* 알림 메시지 */}
-      {actionMessage && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-md transition-opacity duration-300 overflow-hidden ${
-            actionMessage.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : "bg-red-100 text-red-800 border border-red-200"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span>{actionMessage.message}</span>
-            <button onClick={() => setActionMessage(null)} className="ml-4 text-gray-500 hover:text-gray-700">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 mt-2">
-            <div
-              className={`h-full ${
-                actionMessage.type === "success"
-                  ? "bg-green-500 animate-shrink-left-success"
-                  : "bg-red-500 animate-shrink-left-error"
-              }`}
-            ></div>
-          </div>
-        </div>
-      )}
-
       {/* 헤더 영역 */}
       <h1 className="text-2xl font-semibold mb-4 md:block hidden">냉장고 관리</h1>
 
@@ -541,7 +478,7 @@ export default function FridgeManagement() {
         <CardContent className="pt-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
               <Input
                 placeholder="학번, 이름 또는 전화번호 검색"
                 className="pl-10"
@@ -556,10 +493,11 @@ export default function FridgeManagement() {
                   className="gap-2 relative w-12 h-10 md:w-auto md:h-auto"
                   onClick={() => setIsFilterOpen(!isFilterOpen)}
                 >
-                  <Filter className={`h-4 w-4 ${isFilterActive() ? "text-primary-foreground" : ""}`} />
+                  <Filter className={`h-4 w-4 ${isFilterActive() ? "text-primary-foreground" : ""}`}/>
                   <span className="hidden md:inline">필터</span>
                   {isFilterActive() && (
-                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                    <span
+                      className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
                       {getActiveFilterCount()}
                     </span>
                   )}
@@ -576,7 +514,7 @@ export default function FridgeManagement() {
                       onValueChange={(value) => setBuildingFilter(value === "all" ? null : Number(value))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="건물 선택" />
+                        <SelectValue placeholder="건물 선택"/>
                       </SelectTrigger>
                       <SelectContent className="z-[150]">
                         <SelectItem value="all">전체</SelectItem>
@@ -616,7 +554,7 @@ export default function FridgeManagement() {
               disabled={isLoading || isRefreshing}
               className="w-12 h-10 md:w-auto md:h-auto"
             >
-              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""} ${isMobile ? "" : "mr-2"}`} />
+              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""} ${isMobile ? "" : "mr-2"}`}/>
               <span className="hidden md:inline">{isRefreshing ? "새로고침 중..." : "새로고침"}</span>
             </Button>
           </div>
@@ -637,7 +575,7 @@ export default function FridgeManagement() {
                 </div>
               ) : error ? (
                 <Alert variant="destructive" className="m-4">
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4"/>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               ) : filteredApplications.length === 0 ? (
@@ -645,56 +583,62 @@ export default function FridgeManagement() {
               ) : (
                 <table className="w-full border-collapse">
                   <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                      <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                        학번
-                      </th>
-                      <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                        이름
-                      </th>
-                      <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                        건물
-                      </th>
-                      <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                        호실
-                      </th>
-                      <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                        전화번호
-                      </th>
-                      {/* 회차 헤더 */}
-                      {filteredApplications.length > 0 &&
-                        getDisplayRounds(filteredApplications[0]).map((round) => (
-                          <th
-                            key={round.id}
-                            className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap"
-                          >
-                            <span className="text-[10.4px] font-normal text-gray-500 block">{round.password}</span>
-                            {round.name}
-                            <br />
-                            <span className="text-[10.4px] font-normal">
+                  <tr>
+                    <th
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                      학번
+                    </th>
+                    <th
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                      이름
+                    </th>
+                    <th
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                      건물
+                    </th>
+                    <th
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                      호실
+                    </th>
+                    <th
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                      전화번호
+                    </th>
+                    {/* 회차 헤더 */}
+                    {filteredApplications.length > 0 &&
+                      getDisplayRounds(filteredApplications[0]).map((round) => (
+                        <th
+                          key={round.id}
+                          className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap"
+                        >
+                          <span className="text-[10.4px] font-normal text-gray-500 block">{round.password}</span>
+                          {round.name}
+                          <br/>
+                          <span className="text-[10.4px] font-normal">
                               ~{round.endDate.split("-")[1]}/{round.endDate.split("-")[2]}
                             </span>
-                          </th>
-                        ))}
-                      {/* 삭제 버튼 헤더 - 공백 */}
-                      <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                        {/* 삭제 버튼 헤더 */}
-                      </th>
-                    </tr>
+                        </th>
+                      ))}
+                    {/* 삭제 버튼 헤더 - 공백 */}
+                    <th
+                      className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                      {/* 삭제 버튼 헤더 */}
+                    </th>
+                  </tr>
                   </thead>
                   <tbody>
-                    {filteredApplications.map((item, index) => (
-                      <FridgeRow
-                        key={`${item.member.id}-${index}`}
-                        item={item}
-                        index={index}
-                        isMobile={isMobile}
-                        getWarningBgClass={getWarningBgClass}
-                        getDisplayRounds={getDisplayRounds}
-                        onOpenDeleteDialog={handleOpenDeleteDialog}
-                        onWarningCountChange={handleWarningCountChange}
-                      />
-                    ))}
+                  {filteredApplications.map((item, index) => (
+                    <FridgeRow
+                      key={`${item.member.id}-${index}`}
+                      item={item}
+                      index={index}
+                      isMobile={isMobile}
+                      getWarningBgClass={getWarningBgClass}
+                      getDisplayRounds={getDisplayRounds}
+                      onOpenDeleteDialog={handleOpenDeleteDialog}
+                      onWarningCountChange={handleWarningCountChange}
+                    />
+                  ))}
                   </tbody>
                 </table>
               )}
@@ -749,7 +693,7 @@ export default function FridgeManagement() {
                               <div className="flex items-center">
                                 <span className="font-medium">{round.name}</span>
                                 <span className="mx-2">-</span>
-                                <span style={{ color: getApplicationTypeText(app.type).color }}>
+                                <span style={{color: getApplicationTypeText(app.type).color}}>
                                   {getApplicationTypeText(app.type).text}
                                 </span>
                               </div>
@@ -760,9 +704,9 @@ export default function FridgeManagement() {
                                 disabled={isDeletingApplication}
                               >
                                 {isDeletingApplication ? (
-                                  <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                                  <RefreshCw className="mr-2 h-3 w-3 animate-spin"/>
                                 ) : (
-                                  <Trash2 className="mr-2 h-3 w-3" />
+                                  <Trash2 className="mr-2 h-3 w-3"/>
                                 )}
                                 삭제
                               </Button>

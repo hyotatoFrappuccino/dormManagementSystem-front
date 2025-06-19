@@ -1,4 +1,4 @@
-import { isV0Preview } from "@/lib/utils"
+import {isV0Preview} from "@/lib/utils"
 
 /**
  * 사용자 인증 상태를 확인하는 함수

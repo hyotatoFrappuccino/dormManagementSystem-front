@@ -1,30 +1,33 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect } from "react"
-import { Home, FileText, Users, Menu, Settings, FileCheck, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {useState, useEffect} from "react"
+import {Home, FileText, Users, Menu, Settings, FileCheck, RefreshCw} from "lucide-react"
+import {Button} from "@/components/ui/button"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 
 import RefrigeratorApplication from "./fridge-application"
 import FridgeManagement from "./fridge-management"
 import PayerManagement from "./payer-management"
 import ConsentManagement from "./consent-management"
 import SettingsPage from "./settings"
-import { UserProfile } from "@/components/user-profile"
+import {UserProfile} from "@/components/user-profile"
 
-import { get } from "./lib/api-client"
-import { API_PATHS } from "@/lib/api-config"
-import { findCurrentRound, getUsageStatus } from "@/lib/utils"
-import type { Round, Building, DashboardData } from "@/lib/interfaces"
+import {get} from "./lib/api-client"
+import {API_PATHS} from "@/lib/api-config"
+import {findCurrentRound, getUsageStatus, initializeNotification} from "@/lib/utils"
+import type {Round, Building, DashboardData} from "@/lib/interfaces"
+
+import {NotificationProvider, useNotification} from "@/components/contexts/NotificationContext"
+import {Notification} from "@/components/contexts/NotificationComponent"
 
 const menuItems = [
-  { name: "대시보드", icon: Home },
-  { name: "냉장고 신청/연장", icon: FileText },
-  { name: "냉장고 관리", icon: FileCheck },
-  { name: "납부자 관리", icon: Users },
-  { name: "서약서 관리", icon: FileCheck },
-  { name: "설정", icon: Settings },
+  {name: "대시보드", icon: Home},
+  {name: "냉장고 신청/연장", icon: FileText},
+  {name: "냉장고 관리", icon: FileCheck},
+  {name: "납부자 관리", icon: Users},
+  {name: "서약서 관리", icon: FileCheck},
+  {name: "설정", icon: Settings},
 ]
 
 const getStatusBadgeColor = (status: string) => {
@@ -57,10 +60,21 @@ const getStatusBarColor = (status: string) => {
   }
 }
 
+function NotificationInitializer() {
+  const {showNotification} = useNotification();
+
+  useEffect(() => {
+    initializeNotification(showNotification);
+  }, [showNotification]);
+
+  return null;
+}
+
+
 export default function Dashboard() {
   //const [현재 상태(초기 상태값이 할당), 상태 값 변경 함수] = useState(초기 상태값)
   const [activeMenu, setActiveMenu] = useState("대시보드")
-  const [dashboardData, setDashboardData] = useState<DashboardData>({ totalPayers: 0, buildings: [] })
+  const [dashboardData, setDashboardData] = useState<DashboardData>({totalPayers: 0, buildings: []})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -301,7 +315,7 @@ export default function Dashboard() {
     }
 
     // Use ref to store timeout ID for cleanup
-    const timeoutRef = { current: null as NodeJS.Timeout | null }
+    const timeoutRef = {current: null as NodeJS.Timeout | null}
 
     // Initial update
     updateTime()
@@ -373,7 +387,6 @@ export default function Dashboard() {
     }
   }
 
-  // Format relative time
   const formatRelativeTime = () => {
     const diffInSeconds = Math.floor((currentTime.getTime() - loadTime.getTime()) / 1000)
 
@@ -450,25 +463,15 @@ export default function Dashboard() {
   const renderContent = () => {
     switch (activeMenu) {
       case "냉장고 신청/연장":
-        return <RefrigeratorApplication />
+        return <RefrigeratorApplication/>
       case "냉장고 관리":
-        return <FridgeManagement />
+        return <FridgeManagement/>
       case "납부자 관리":
-        return <PayerManagement />
+        return <PayerManagement/>
       case "서약서 관리":
-        return <ConsentManagement />
+        return <ConsentManagement/>
       case "설정":
-        try {
-          return <SettingsPage />
-        } catch (error) {
-          console.error("Error rendering SettingsPage:", error)
-          return (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <h2 className="text-lg font-medium text-red-800 mb-2">설정 페이지를 불러올 수 없습니다</h2>
-              <p className="text-sm text-red-600">설정 페이지 컴포넌트에 오류가 있습니다. 개발자에게 문의하세요.</p>
-            </div>
-          )
-        }
+        return <SettingsPage/>
       default:
         return (
           <div className="max-w-3xl mx-auto">
@@ -498,14 +501,14 @@ export default function Dashboard() {
                         value={selectedRound?.id?.toString() || ""}
                         onValueChange={(value) => {
                           const round = rounds.find((r) => r.id?.toString() === value)
-                          if (round && typeof round.id === "number") {
+                          if (round) {
                             setSelectedRound(round)
                             fetchBuildingUsageByRound(round.id)
                           }
                         }}
                       >
                         <SelectTrigger className="w-full md:w-[280px] pl-3">
-                          <SelectValue placeholder="회차 선택" />
+                          <SelectValue placeholder="회차 선택"/>
                         </SelectTrigger>
                         <SelectContent>
                           {Array.isArray(rounds) && rounds.length > 0 ? (
@@ -581,7 +584,7 @@ export default function Dashboard() {
                                   <div className="relative h-2 bg-black/10 rounded-full mb-1">
                                     <div
                                       className={`absolute left-0 top-0 h-full rounded-full ${getStatusBarColor(fridgeUsage.status)}`}
-                                      style={{ width: `${fridgeUsage.percentage}%` }}
+                                      style={{width: `${fridgeUsage.percentage}%`}}
                                     />
                                   </div>
                                   <div className="text-xs text-gray-500">
@@ -614,7 +617,7 @@ export default function Dashboard() {
                                   <div className="relative h-2 bg-black/10 rounded-full mb-1">
                                     <div
                                       className={`absolute left-0 top-0 h-full rounded-full ${getStatusBarColor(freezerUsage.status)}`}
-                                      style={{ width: `${freezerUsage.percentage}%` }}
+                                      style={{width: `${freezerUsage.percentage}%`}}
                                     />
                                   </div>
                                   <div className="text-xs text-gray-500">
@@ -660,7 +663,7 @@ export default function Dashboard() {
                               <div className="relative h-2 bg-black/10 rounded-full mb-2">
                                 <div
                                   className={`absolute left-0 top-0 h-full rounded-full ${getStatusBarColor(usage.status)}`}
-                                  style={{ width: `${usage.percentage}%` }}
+                                  style={{width: `${usage.percentage}%`}}
                                 />
                               </div>
                               <div className="text-xs text-gray-500">
@@ -711,9 +714,10 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* 모바일 헤더 - 햄버거 메뉴와 제목 */}
-      <div className="fixed top-0 left-0 right-0 bg-white z-50 md:hidden flex items-center h-14 px-4 border-b shadow-sm">
+      <div
+        className="fixed top-0 left-0 right-0 bg-white z-50 md:hidden flex items-center h-14 px-4 border-b shadow-sm">
         <Button variant="ghost" size="icon" className="mr-3" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          <Menu className="h-6 w-6" />
+          <Menu className="h-6 w-6"/>
         </Button>
         <h1 className="text-lg font-medium">{activeMenu}</h1>
       </div>
@@ -744,7 +748,7 @@ export default function Dashboard() {
                   activeMenu === item.name ? "bg-gray-50 text-blue-600" : "text-gray-600"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4"/>
                 {item.name}
               </Link>
             )
@@ -752,18 +756,22 @@ export default function Dashboard() {
         </nav>
 
         {/* 사용자 프로필 및 로그아웃 버튼 */}
-        <UserProfile />
+        <UserProfile/>
       </div>
 
       {/* Overlay for mobile */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}/>
       )}
 
       {/* Main content */}
-      <div className="flex-1 p-6 md:p-8 pt-[70px] md:pt-8 overflow-x-hidden">
-        <div className="w-full">{renderContent()}</div>
-      </div>
+      <NotificationProvider>
+        <NotificationInitializer/>
+        <div className="flex-1 p-6 md:p-8 pt-[70px] md:pt-8 overflow-x-hidden">
+          <div className="w-full">{renderContent()}</div>
+        </div>
+        <Notification/>
+      </NotificationProvider>
     </div>
   )
 }

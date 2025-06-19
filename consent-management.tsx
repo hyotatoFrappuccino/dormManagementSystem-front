@@ -1,19 +1,20 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Search, Filter, AlertCircle, Download, X, Loader2 } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { API_PATHS } from "@/lib/api-config"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { Building, Consent } from "@/lib/interfaces"
-import { get, del, post } from "@/lib/api-client"
+import {useState, useEffect, useRef, useCallback, useMemo} from "react"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {Card, CardContent} from "@/components/ui/card"
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter} from "@/components/ui/dialog"
+import {Search, Filter, AlertCircle, Download} from "lucide-react"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover"
+import {API_PATHS} from "@/lib/api-config"
+import {Alert, AlertDescription} from "@/components/ui/alert"
+import type {Building, Consent} from "@/lib/interfaces"
+import {get, del, post} from "@/lib/api-client"
 import ConsentRow from "@/components/consent-row"
+import {handleError, handleInfo, handleSuccess} from "@/lib/utils";
 
 const ConsentManagement = () => {
   // 건물 목록 상태
@@ -42,12 +43,6 @@ const ConsentManagement = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // 작업 완료 알림을 위한 상태
-  const [actionMessage, setActionMessage] = useState<{
-    type: "success" | "error" | "info"
-    message: string
-  } | null>(null)
-
   // 테이블 컨테이너 참조
   const tableBodyRef = useRef<HTMLDivElement>(null)
 
@@ -60,17 +55,6 @@ const ConsentManagement = () => {
     return () => clearTimeout(timer)
   }, [searchTerm, setDebouncedSearchTerm])
 
-  useEffect(() => {
-    if (!actionMessage) return
-
-    // info 타입은 자동으로 닫히지 않도록 함
-    if (actionMessage.type === "info") return
-
-    const timeout = setTimeout(() => setActionMessage(null), actionMessage.type === "error" ? 60000 : 3000)
-
-    return () => clearTimeout(timeout) // 기존 타이머 정리
-  }, [actionMessage])
-
   // 서약서 데이터를 가져오는 함수
   const fetchConsents = useCallback(async () => {
     try {
@@ -79,12 +63,7 @@ const ConsentManagement = () => {
       setConsents(sorted)
       return sorted
     } catch (error) {
-      console.error("Error fetching consents:", error)
-      setActionMessage({
-        type: "error",
-        message: `서약서 데이터를 가져오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      throw error
+      handleError(error, "서약서 데이터 가져오기")
     }
   }, [])
 
@@ -95,12 +74,7 @@ const ConsentManagement = () => {
       setBuildings(buildingsData)
       return buildingsData
     } catch (error) {
-      console.error("Error fetching buildings:", error)
-      setActionMessage({
-        type: "error",
-        message: `건물 목록을 가져오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      throw error
+      handleError(error, "건물 목록 가져오기")
     }
   }, [])
 
@@ -112,13 +86,12 @@ const ConsentManagement = () => {
     const fetchData = () => {
       Promise.all([fetchBuildings(), fetchConsents()])
         .then(([, consentsData]) => {
-          setFilteredConsents(consentsData)
+          if (consentsData) {
+            setFilteredConsents(consentsData)
+          }
         })
         .catch((error) => {
-          setActionMessage({
-            type: "error",
-            message: `데이터 불러오기 실패: ${error instanceof Error ? error.message : String(error)}`,
-          })
+          handleError(error, "건물, 서약서 불러오기")
         })
         .finally(() => {
           setIsLoading(false)
@@ -178,22 +151,10 @@ const ConsentManagement = () => {
         // 성공 시 로컬 상태 업데이트
         setConsents((prevConsents) => prevConsents.filter((c) => c.id !== selectedConsent.id))
 
-        // 성공 메시지 표시
-        setActionMessage({
-          type: "success",
-          message: "서약서가 성공적으로 삭제되었습니다.",
-        })
-
-        setIsDeleteDialogOpen(false)
+        handleSuccess("성공적으로 삭제되었습니다.")
       } catch (error) {
-        console.error("Error deleting consent:", error)
-
-        // 오류 메시지 표시
-        setActionMessage({
-          type: "error",
-          message: `오류: ${error instanceof Error ? error.message : String(error)}`,
-        })
-
+        handleError(error, "서약서 삭제")
+      } finally {
         setIsDeleteDialogOpen(false)
       }
     }
@@ -236,11 +197,7 @@ const ConsentManagement = () => {
   const refreshData = useCallback(async () => {
     setIsRefreshing(true)
 
-    // 불러오기 시작 메시지 표시
-    setActionMessage({
-      type: "info",
-      message: "구글 시트에서 데이터를 불러오는 중... 수 초 정도가 소요됩니다.",
-    })
+    handleInfo("구글 시트에서 데이터를 불러오는 중... 수 초 정도가 소요됩니다.")
 
     try {
       // 먼저 POST 요청을 보냄
@@ -249,22 +206,14 @@ const ConsentManagement = () => {
       // POST 요청이 성공하면 GET 요청으로 데이터를 가져옴
       if (postResponse) {
         const refreshedConsents = await fetchConsents()
-        setFilteredConsents(refreshedConsents)
+        if (refreshedConsents) {
+          setFilteredConsents(refreshedConsents)
+        }
 
-        // 불러오기 완료 메시지로 변경
-        setActionMessage({
-          type: "success",
-          message: "서약서 목록이 성공적으로 불러와졌습니다.",
-        })
+        handleSuccess("성공적으로 불러와졌습니다.")
       }
     } catch (error) {
-      console.error("Error refreshing data:", error)
-
-      // 오류 메시지 표시
-      setActionMessage({
-        type: "error",
-        message: `오류: ${error instanceof Error ? error.message : String(error)}`,
-      })
+      handleError(error, "구글 시트 서약서 불러오기")
     } finally {
       setIsRefreshing(false)
     }
@@ -290,49 +239,13 @@ const ConsentManagement = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {actionMessage && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-md transition-opacity duration-300 overflow-hidden ${
-            actionMessage.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : actionMessage.type === "info"
-                ? "bg-blue-100 text-blue-800 border border-blue-200"
-                : "bg-red-100 text-red-800 border border-red-200"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            {actionMessage.type === "info" && (
-              <div className="flex items-center">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                <span>{actionMessage.message}</span>
-              </div>
-            )}
-            {actionMessage.type !== "info" && <span>{actionMessage.message}</span>}
-            <button onClick={() => setActionMessage(null)} className="ml-4 text-gray-500 hover:text-gray-700">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          {actionMessage.type !== "info" && (
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 mt-2">
-              <div
-                className={`h-full ${
-                  actionMessage.type === "success"
-                    ? "bg-green-500 animate-shrink-left-success"
-                    : "bg-red-500 animate-shrink-left-error"
-                }`}
-              ></div>
-            </div>
-          )}
-        </div>
-      )}
-
       <h1 className="text-2xl font-semibold mb-4 md:block hidden">서약서 관리</h1>
 
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex gap-2 flex-wrap">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
               <Input
                 placeholder="학번, 이름 또는 전화번호 검색"
                 className="pl-10"
@@ -347,10 +260,11 @@ const ConsentManagement = () => {
                   className="gap-2 relative w-12 h-10 md:w-auto md:h-auto"
                   onClick={() => setIsFilterOpen(!isFilterOpen)}
                 >
-                  <Filter className="h-5 w-5" />
+                  <Filter className="h-5 w-5"/>
                   <span className="hidden md:inline">필터</span>
                   {isFilterActive() && (
-                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                    <span
+                      className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
                       {activeFilterCount}
                     </span>
                   )}
@@ -367,7 +281,7 @@ const ConsentManagement = () => {
                       onValueChange={(value) => setBuildingFilter(value === "all" ? null : value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="건물 선택" />
+                        <SelectValue placeholder="건물 선택"/>
                       </SelectTrigger>
                       <SelectContent className="z-[150]">
                         <SelectItem value="all">전체</SelectItem>
@@ -382,7 +296,7 @@ const ConsentManagement = () => {
 
                   <div className="space-y-2">
                     <Label>호실</Label>
-                    <Input placeholder="호실 검색" value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)} />
+                    <Input placeholder="호실 검색" value={roomFilter} onChange={(e) => setRoomFilter(e.target.value)}/>
                   </div>
 
                   <div className="space-y-2">
@@ -392,7 +306,7 @@ const ConsentManagement = () => {
                       onValueChange={(value) => setConsentStatusFilter(value === "all" ? null : value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="상태 선택" />
+                        <SelectValue placeholder="상태 선택"/>
                       </SelectTrigger>
                       <SelectContent className="z-[150]">
                         <SelectItem value="all">전체</SelectItem>
@@ -446,7 +360,7 @@ const ConsentManagement = () => {
               disabled={isLoading || isRefreshing}
               className="w-12 h-10 md:w-auto md:h-auto"
             >
-              <Download className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""} ${isMobile ? "" : "mr-2"}`} />
+              <Download className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""} ${isMobile ? "" : "mr-2"}`}/>
               <span className="hidden md:inline">{isRefreshing ? "불러오는 중..." : "불러오기"}</span>
             </Button>
           </div>
@@ -461,59 +375,67 @@ const ConsentManagement = () => {
             <div ref={tableBodyRef} className="overflow-auto h-[calc(100vh-290px)] min-h-[410px] w-full rounded-lg">
               <table className="w-full border-collapse">
                 <thead className="bg-gray-50 sticky top-0 z-10">
-                  <tr>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      제출일
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      학번
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      이름
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      전화번호
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      건물
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      호실
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      동의 여부
-                    </th>
-                    <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
-                      관리
-                    </th>
-                  </tr>
+                <tr>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    제출일
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    학번
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    이름
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    전화번호
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    건물
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    호실
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    동의 여부
+                  </th>
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                    관리
+                  </th>
+                </tr>
                 </thead>
                 <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-12">
-                        <div className="flex justify-center items-center h-64">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredConsents.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-12 text-gray-500">
-                        검색 결과가 없습니다.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredConsents.map((consent, index) => (
-                      <ConsentRow
-                        key={consent.id}
-                        consent={consent}
-                        index={index}
-                        onDelete={handleDelete}
-                        isUpdated={recentlyUpdated.includes(String(consent.id))}
-                      />
-                    ))
-                  )}
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">
+                      <div className="flex justify-center items-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredConsents.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12 text-gray-500">
+                      검색 결과가 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredConsents.map((consent, index) => (
+                    <ConsentRow
+                      key={consent.id}
+                      consent={consent}
+                      index={index}
+                      onDelete={handleDelete}
+                      isUpdated={recentlyUpdated.includes(String(consent.id))}
+                    />
+                  ))
+                )}
                 </tbody>
               </table>
             </div>
@@ -539,13 +461,13 @@ const ConsentManagement = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-red-500 flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
+              <AlertCircle className="h-5 w-5 mr-2"/>
               서약서 삭제
             </DialogTitle>
           </DialogHeader>
           <div className="py-2">
             <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className="h-4 w-4"/>
               <AlertDescription>
                 '{selectedConsent?.name}' 서약서를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
               </AlertDescription>

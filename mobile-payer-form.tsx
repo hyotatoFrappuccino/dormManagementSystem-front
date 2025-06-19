@@ -2,14 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ChevronLeft, Check, X, RefreshCw } from "lucide-react"
-import { cn } from "@/lib/utils"
+import {useState} from "react"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {Card, CardContent} from "@/components/ui/card"
+import {Alert, AlertDescription} from "@/components/ui/alert"
+import {ChevronLeft, Check, X, RefreshCw} from "lucide-react"
+import {cn} from "@/lib/utils"
 
 interface MobilePayerFormProps {
   mode: "new" | "edit"
@@ -28,14 +28,13 @@ interface MobilePayerFormProps {
 }
 
 export default function MobilePayerForm({
-  mode,
-  payerId,
-  payerName,
-  initialData,
-  onSave,
-  onDelete,
-  onCancel,
-}: MobilePayerFormProps) {
+                                          mode,
+                                          payerName,
+                                          initialData,
+                                          onSave,
+                                          onDelete,
+                                          onCancel,
+                                        }: MobilePayerFormProps) {
   // 기본 납부 금액 변수명 변경: defaultPaymentAmount -> default_amount
 
   const [formData, setFormData] = useState({
@@ -128,7 +127,7 @@ export default function MobilePayerForm({
       <div className="sticky top-0 z-10 bg-background border-b">
         <div className="flex items-center h-14 px-4">
           <Button variant="ghost" size="icon" onClick={onCancel} className="mr-2">
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5"/>
           </Button>
           <h1 className="text-lg font-medium">
             {mode === "new" ? "신규 납부자 등록" : `${payerName || "납부자"} 정보 수정`}
@@ -151,8 +150,8 @@ export default function MobilePayerForm({
                 id="id"
                 value={formData.id}
                 onChange={(e) => {
-                  setFormData({ ...formData, id: e.target.value })
-                  if (formErrors.id) setFormErrors({ ...formErrors, id: false })
+                  setFormData({...formData, id: e.target.value})
+                  if (formErrors.id) setFormErrors({...formErrors, id: false})
                 }}
                 className={cn(formErrors.id && "border-red-500 focus-visible:ring-red-500")}
                 placeholder="이름으로 입금하였을 경우 입금자명 입력"
@@ -167,8 +166,8 @@ export default function MobilePayerForm({
                 type="number"
                 value={formData.amount}
                 onChange={(e) => {
-                  setFormData({ ...formData, amount: e.target.value })
-                  if (formErrors.amount) setFormErrors({ ...formErrors, amount: false })
+                  setFormData({...formData, amount: e.target.value})
+                  if (formErrors.amount) setFormErrors({...formErrors, amount: false})
                 }}
                 className={cn(formErrors.amount && "border-red-500 focus-visible:ring-red-500")}
               />
@@ -182,8 +181,8 @@ export default function MobilePayerForm({
                 type="date"
                 value={formData.date}
                 onChange={(e) => {
-                  setFormData({ ...formData, date: e.target.value })
-                  if (formErrors.date) setFormErrors({ ...formErrors, date: false })
+                  setFormData({...formData, date: e.target.value})
+                  if (formErrors.date) setFormErrors({...formErrors, date: false})
                 }}
                 className={cn(formErrors.date && "border-red-500 focus-visible:ring-red-500")}
               />
@@ -197,8 +196,8 @@ export default function MobilePayerForm({
                   type="button"
                   variant={formData.type === "계좌이체" ? "default" : "outline"}
                   onClick={() => {
-                    setFormData({ ...formData, type: "계좌이체" })
-                    if (formErrors.type) setFormErrors({ ...formErrors, type: false })
+                    setFormData({...formData, type: "계좌이체"})
+                    if (formErrors.type) setFormErrors({...formErrors, type: false})
                   }}
                   className="w-full"
                 >
@@ -208,8 +207,8 @@ export default function MobilePayerForm({
                   type="button"
                   variant={formData.type === "현장납부" ? "default" : "outline"}
                   onClick={() => {
-                    setFormData({ ...formData, type: "현장납부" })
-                    if (formErrors.type) setFormErrors({ ...formErrors, type: false })
+                    setFormData({...formData, type: "현장납부"})
+                    if (formErrors.type) setFormErrors({...formErrors, type: false})
                   }}
                   className="w-full"
                 >
@@ -226,19 +225,19 @@ export default function MobilePayerForm({
                   <Button
                     type="button"
                     variant={formData.status === "PAID" ? "default" : "outline"}
-                    onClick={() => setFormData({ ...formData, status: "PAID" })}
+                    onClick={() => setFormData({...formData, status: "PAID"})}
                     className="w-full"
                   >
-                    <Check className="h-4 w-4 mr-2" />
+                    <Check className="h-4 w-4 mr-2"/>
                     납부 완료
                   </Button>
                   <Button
                     type="button"
                     variant={formData.status === "REFUNDED" ? "default" : "outline"}
-                    onClick={() => setFormData({ ...formData, status: "REFUNDED" })}
+                    onClick={() => setFormData({...formData, status: "REFUNDED"})}
                     className="w-full"
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-4 w-4 mr-2"/>
                     환불 완료
                   </Button>
                 </div>
@@ -257,12 +256,12 @@ export default function MobilePayerForm({
                 onClick={handleDelete}
                 disabled={isDeleting || isSubmitting}
               >
-                {isDeleting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
+                {isDeleting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin"/> : <X className="h-4 w-4 mr-2"/>}
                 삭제
               </Button>
             )}
             <Button type="submit" className="flex-1" disabled={isSubmitting || isDeleting}>
-              {isSubmitting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
+              {isSubmitting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin"/> : <Check className="h-4 w-4 mr-2"/>}
               {mode === "new" ? "등록" : "저장"}
             </Button>
           </div>

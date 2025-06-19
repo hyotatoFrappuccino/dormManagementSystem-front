@@ -1,9 +1,9 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { API_BASE_URL } from "@/lib/api-config"
-import { isV0Preview } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import {API_BASE_URL} from "@/lib/api-config"
+import {isV0Preview} from "@/lib/utils"
+import {useRouter} from "next/navigation"
 import "./google-button.css"
 
 export default function LoginPage() {
@@ -43,7 +43,7 @@ export default function LoginPage() {
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 48 48"
                   xmlnsXlink="http://www.w3.org/1999/xlink"
-                  style={{ display: "block" }}
+                  style={{display: "block"}}
                 >
                   <path
                     fill="#EA4335"
@@ -65,7 +65,7 @@ export default function LoginPage() {
                 </svg>
               </div>
               <span className="gsi-material-button-contents">Google 계정으로 로그인</span>
-              <span style={{ display: "none" }}>Google 계정으로 로그인</span>
+              <span style={{display: "none"}}>Google 계정으로 로그인</span>
             </div>
           </button>
         </CardContent>

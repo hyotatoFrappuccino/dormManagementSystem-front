@@ -3,24 +3,24 @@
 import type React from "react"
 
 // ===== 임포트 및 컴포넌트 의존성 =====
-import { DialogFooter } from "@/components/ui/dialog"
+import {DialogFooter} from "@/components/ui/dialog"
 
-import { useEffect, useRef, useCallback, useState, useReducer, useMemo } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Plus, Check, X, Filter, RefreshCw } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { useIsMobile } from "@/hooks/use-mobile"
+import {useEffect, useRef, useCallback, useState, useReducer, useMemo} from "react"
+import {Button} from "@/components/ui/button"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {Card, CardContent} from "@/components/ui/card"
+import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from "@/components/ui/dialog"
+import {Search, Plus, Check, X, Filter, RefreshCw} from "lucide-react"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover"
+import {cn, handleError, handleSuccess} from "@/lib/utils"
+import {useIsMobile} from "@/hooks/use-mobile"
 import MobilePayerForm from "./mobile-payer-form"
-import { API_PATHS } from "@/lib/api-config"
-import { put, del, get, post } from "@/lib/api-client"
-import { Switch } from "@/components/ui/switch"
-import type { Payer, Business, BusinessParticipation } from "@/lib/interfaces"
+import {API_PATHS} from "@/lib/api-config"
+import {put, del, get, post} from "@/lib/api-client"
+import {Switch} from "@/components/ui/switch"
+import type {Payer, Business, BusinessParticipation} from "@/lib/interfaces"
 import PayerRow from "./components/payer-row"
 
 // 상태 타입 정의
@@ -46,11 +46,6 @@ interface PayerState {
     show: boolean
     mode: "new" | "edit"
   }
-
-  actionMessage: {
-    type: "success" | "error"
-    message: string
-  } | null
 
   // 필터 상태
   isFilterOpen: boolean
@@ -112,7 +107,6 @@ type PayerAction =
   | { type: "SET_SELECTED_PAYER"; payload: Payer | null }
   | { type: "SET_DIALOG"; payload: { key: "edit" | "delete" | "new"; value: boolean } }
   | { type: "SET_MOBILE_FORM"; payload: { show: boolean; mode: "new" | "edit" } }
-  | { type: "SET_ACTION_MESSAGE"; payload: { type: "success" | "error"; message: string } | null }
   | { type: "SET_FILTER_OPEN"; payload: boolean }
   | { type: "SET_SEARCH_TERM"; payload: string }
   | { type: "SET_STATUS_FILTER"; payload: string | null }
@@ -139,24 +133,24 @@ type PayerAction =
 function payerReducer(state: PayerState, action: PayerAction): PayerState {
   switch (action.type) {
     case "SET_PAYERS":
-      return { ...state, payers: action.payload }
+      return {...state, payers: action.payload}
     case "SET_FILTERED_PAYERS":
-      return { ...state, filteredPayers: action.payload }
+      return {...state, filteredPayers: action.payload}
     case "SET_DEFAULT_AMOUNT":
-      return { ...state, defaultAmount: action.payload }
+      return {...state, defaultAmount: action.payload}
     case "ADD_RECENTLY_UPDATED":
-      return { ...state, recentlyUpdated: [...state.recentlyUpdated, action.payload] }
+      return {...state, recentlyUpdated: [...state.recentlyUpdated, action.payload]}
     case "REMOVE_RECENTLY_UPDATED":
       return {
         ...state,
         recentlyUpdated: state.recentlyUpdated.filter((id) => id !== action.payload),
       }
     case "SET_LOADING":
-      return { ...state, isLoading: action.payload }
+      return {...state, isLoading: action.payload}
     case "SET_REFRESHING":
-      return { ...state, isRefreshing: action.payload }
+      return {...state, isRefreshing: action.payload}
     case "SET_SELECTED_PAYER":
-      return { ...state, selectedPayer: action.payload }
+      return {...state, selectedPayer: action.payload}
     case "SET_DIALOG":
       return {
         ...state,
@@ -166,25 +160,23 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
         },
       }
     case "SET_MOBILE_FORM":
-      return { ...state, mobileForm: action.payload }
-    case "SET_ACTION_MESSAGE":
-      return { ...state, actionMessage: action.payload }
+      return {...state, mobileForm: action.payload}
     case "SET_FILTER_OPEN":
-      return { ...state, isFilterOpen: action.payload }
+      return {...state, isFilterOpen: action.payload}
     case "SET_SEARCH_TERM":
-      return { ...state, searchTerm: action.payload }
+      return {...state, searchTerm: action.payload}
     case "SET_STATUS_FILTER":
-      return { ...state, statusFilter: action.payload }
+      return {...state, statusFilter: action.payload}
     case "SET_TYPE_FILTER":
-      return { ...state, typeFilter: action.payload }
+      return {...state, typeFilter: action.payload}
     case "SET_START_DATE_FILTER":
-      return { ...state, startDateFilter: action.payload }
+      return {...state, startDateFilter: action.payload}
     case "SET_END_DATE_FILTER":
-      return { ...state, endDateFilter: action.payload }
+      return {...state, endDateFilter: action.payload}
     case "SET_NEW_PAYER_FORM":
       return {
         ...state,
-        newPayerForm: { ...state.newPayerForm, ...action.payload },
+        newPayerForm: {...state.newPayerForm, ...action.payload},
       }
     case "RESET_NEW_PAYER_FORM":
       return {
@@ -199,12 +191,12 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
     case "SET_FORM_ERRORS":
       return {
         ...state,
-        formErrors: { ...state.formErrors, ...action.payload },
+        formErrors: {...state.formErrors, ...action.payload},
       }
     case "SET_EDIT_FORM":
       return {
         ...state,
-        editForm: { ...state.editForm, ...action.payload },
+        editForm: {...state.editForm, ...action.payload},
       }
     case "INIT_EDIT_FORM":
       return {
@@ -226,7 +218,7 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
       return {
         ...state,
         payers: state.payers.map((payer) =>
-          payer.id === action.payload.id ? { ...payer, ...action.payload.data } : payer,
+          payer.id === action.payload.id ? {...payer, ...action.payload.data} : payer,
         ),
       }
     case "DELETE_PAYER":
@@ -244,7 +236,7 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
         endDateFilter: "",
       }
     case "SET_BULK_REGISTRATION":
-      return { ...state, bulkRegistration: { ...state.bulkRegistration, show: action.payload.show } }
+      return {...state, bulkRegistration: {...state.bulkRegistration, show: action.payload.show}}
     case "ADD_BULK_ROW":
       return {
         ...state,
@@ -258,7 +250,7 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
               amount: state.defaultAmount,
               date: new Date().toISOString().split("T")[0],
               type: "계좌이체",
-              errors: { name: false, amount: false, date: false },
+              errors: {name: false, amount: false, date: false},
             },
           ],
         },
@@ -277,7 +269,7 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
         bulkRegistration: {
           ...state.bulkRegistration,
           rows: state.bulkRegistration.rows.map((row, index) =>
-            index === action.payload.index ? { ...row, [action.payload.field]: action.payload.value } : row,
+            index === action.payload.index ? {...row, [action.payload.field]: action.payload.value} : row,
           ),
         },
       }
@@ -290,7 +282,7 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
             index === action.payload.index
               ? {
                 ...row,
-                errors: { ...row.errors, [action.payload.field]: action.payload.value },
+                errors: {...row.errors, [action.payload.field]: action.payload.value},
               }
               : row,
           ),
@@ -308,7 +300,7 @@ function payerReducer(state: PayerState, action: PayerAction): PayerState {
               amount: state.defaultAmount,
               date: new Date().toISOString().split("T")[0],
               type: "계좌이체",
-              errors: { name: false, amount: false, date: false },
+              errors: {name: false, amount: false, date: false},
             },
           ],
         },
@@ -336,7 +328,6 @@ const initialState: PayerState = {
     show: false,
     mode: "new",
   },
-  actionMessage: null,
   isFilterOpen: false,
   searchTerm: "",
   statusFilter: null,
@@ -371,7 +362,7 @@ const initialState: PayerState = {
         amount: "7000",
         date: new Date().toISOString().split("T")[0],
         type: "계좌이체",
-        errors: { name: false, amount: false, date: false },
+        errors: {name: false, amount: false, date: false},
       },
     ],
   },
@@ -395,7 +386,6 @@ const PayerManagement = () => {
     selectedPayer,
     dialogState,
     mobileForm,
-    actionMessage,
     isFilterOpen,
     searchTerm,
     statusFilter,
@@ -422,92 +412,84 @@ const PayerManagement = () => {
   // 검색어 디바운싱을 위한 상태 추가 (useState 아래에 추가)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
 
-  // 액션 헬퍼 함수들
-  const setActionMessage = useCallback((type: "success" | "error", message: string) => {
-    dispatch({
-      type: "SET_ACTION_MESSAGE",
-      payload: { type, message },
-    })
-  }, [])
-
   const setDialog = useCallback((key: "edit" | "delete" | "new", value: boolean) => {
-    dispatch({ type: "SET_DIALOG", payload: { key, value } })
+    dispatch({type: "SET_DIALOG", payload: {key, value}})
   }, [])
 
   const setMobileForm = useCallback((show: boolean, mode: "new" | "edit" = "new") => {
-    dispatch({ type: "SET_MOBILE_FORM", payload: { show, mode } })
+    dispatch({type: "SET_MOBILE_FORM", payload: {show, mode}})
   }, [])
 
   const setFilter = useCallback((key: string, value: any) => {
     switch (key) {
       case "searchTerm":
-        dispatch({ type: "SET_SEARCH_TERM", payload: value })
+        dispatch({type: "SET_SEARCH_TERM", payload: value})
         break
       case "statusFilter":
-        dispatch({ type: "SET_STATUS_FILTER", payload: value })
+        dispatch({type: "SET_STATUS_FILTER", payload: value})
         break
       case "typeFilter":
-        dispatch({ type: "SET_TYPE_FILTER", payload: value })
+        dispatch({type: "SET_TYPE_FILTER", payload: value})
         break
       case "startDateFilter":
-        dispatch({ type: "SET_START_DATE_FILTER", payload: value })
+        dispatch({type: "SET_START_DATE_FILTER", payload: value})
         break
       case "endDateFilter":
-        dispatch({ type: "SET_END_DATE_FILTER", payload: value })
+        dispatch({type: "SET_END_DATE_FILTER", payload: value})
         break
       case "isFilterOpen":
-        dispatch({ type: "SET_FILTER_OPEN", payload: value })
+        dispatch({type: "SET_FILTER_OPEN", payload: value})
         break
     }
   }, [])
 
   const resetFilters = useCallback(() => {
-    dispatch({ type: "RESET_FILTERS" })
+    dispatch({type: "RESET_FILTERS"})
   }, [])
 
   const setNewPayerForm = useCallback((data: Partial<PayerState["newPayerForm"]>) => {
-    dispatch({ type: "SET_NEW_PAYER_FORM", payload: data })
+    dispatch({type: "SET_NEW_PAYER_FORM", payload: data})
   }, [])
 
   const resetNewPayerForm = useCallback(() => {
-    dispatch({ type: "RESET_NEW_PAYER_FORM" })
+    dispatch({type: "RESET_NEW_PAYER_FORM"})
   }, [])
 
   const setFormErrors = useCallback((errors: Partial<PayerState["formErrors"]>) => {
-    dispatch({ type: "SET_FORM_ERRORS", payload: errors })
+    dispatch({type: "SET_FORM_ERRORS", payload: errors})
   }, [])
 
   const setEditForm = useCallback((data: Partial<PayerState["editForm"]>) => {
-    dispatch({ type: "SET_EDIT_FORM", payload: data })
+    dispatch({type: "SET_EDIT_FORM", payload: data})
   }, [])
 
   const initEditForm = useCallback((payer: Payer) => {
-    dispatch({ type: "INIT_EDIT_FORM", payload: payer })
+    dispatch({type: "INIT_EDIT_FORM", payload: payer})
   }, [])
 
   const updatePayer = useCallback((id: number, data: Partial<Payer>) => {
-    dispatch({ type: "UPDATE_PAYER", payload: { id, data } })
+    dispatch({type: "UPDATE_PAYER", payload: {id, data}})
   }, [])
 
   const deletePayer = useCallback((id: number) => {
-    dispatch({ type: "DELETE_PAYER", payload: id })
+    dispatch({type: "DELETE_PAYER", payload: id})
   }, [])
 
   const addRecentlyUpdated = useCallback((id: string) => {
-    dispatch({ type: "ADD_RECENTLY_UPDATED", payload: id })
+    dispatch({type: "ADD_RECENTLY_UPDATED", payload: id})
   }, [])
 
   const removeRecentlyUpdated = useCallback((id: string) => {
-    dispatch({ type: "REMOVE_RECENTLY_UPDATED", payload: id })
+    dispatch({type: "REMOVE_RECENTLY_UPDATED", payload: id})
   }, [])
 
   const setSelectedPayer = useCallback((payer: Payer | null) => {
-    dispatch({ type: "SET_SELECTED_PAYER", payload: payer })
+    dispatch({type: "SET_SELECTED_PAYER", payload: payer})
   }, [])
 
   // API 호출 함수들
   const fetchPayers = useCallback(async () => {
-    dispatch({ type: "SET_LOADING", payload: true })
+    dispatch({type: "SET_LOADING", payload: true})
     try {
       const data = await get<Payer[]>(API_PATHS.PAYMENT)
 
@@ -529,38 +511,30 @@ const PayerManagement = () => {
         return 0
       })
 
-      dispatch({ type: "SET_PAYERS", payload: sortedData })
+      dispatch({type: "SET_PAYERS", payload: sortedData})
       return sortedData
     } catch (error) {
-      console.error("Error fetching payers:", error)
-      setActionMessage(
-        "error",
-        `납부자 목록을 불러오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      )
+      handleError(error, "납부자 목록 불러오기")
       return []
     } finally {
-      dispatch({ type: "SET_LOADING", payload: false })
+      dispatch({type: "SET_LOADING", payload: false})
     }
-  }, [setActionMessage])
+  }, [])
 
   const fetchDefaultAmount = useCallback(async () => {
     try {
       const amount = await get<string>(API_PATHS.CONFIG_DEFAULT_AMOUNT)
-      dispatch({ type: "SET_DEFAULT_AMOUNT", payload: amount })
+      dispatch({type: "SET_DEFAULT_AMOUNT", payload: amount})
       dispatch({
         type: "SET_NEW_PAYER_FORM",
-        payload: { amount },
+        payload: {amount},
       })
       return amount
     } catch (error) {
-      console.error("Error fetching default amount:", error)
-      setActionMessage(
-        "error",
-        `기본 납부 금액을 불러오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      )
+      handleError(error, "기본 납부 금액 불러오기")
       return "7000"
     }
-  }, [setActionMessage])
+  }, [])
 
   const fetchBusinesses = useCallback(async () => {
     try {
@@ -579,15 +553,11 @@ const PayerManagement = () => {
       setVisibleBusinesses(initialVisibility)
       return response
     } catch (error) {
-      console.error("Error fetching businesses:", error)
       setBusinesses([])
-      setActionMessage(
-        "error",
-        `사업 목록을 불러오는 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      )
+      handleError(error, "사업 목록 불러오기")
       return []
     }
-  }, [setActionMessage])
+  }, [])
 
   // 복합 액션 함수들
   const openEditForm = useCallback(
@@ -608,35 +578,22 @@ const PayerManagement = () => {
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
     const fetchData = () => {
-      dispatch({ type: "SET_LOADING", payload: true })
+      dispatch({type: "SET_LOADING", payload: true})
 
       Promise.all([fetchPayers(), fetchDefaultAmount(), fetchBusinesses()])
         .then(([payersData]) => {
-          dispatch({ type: "SET_FILTERED_PAYERS", payload: payersData })
+          dispatch({type: "SET_FILTERED_PAYERS", payload: payersData})
         })
         .catch((error) => {
-          setActionMessage("error", `데이터 불러오기 실패: ${error instanceof Error ? error.message : String(error)}`)
+          handleError(error, "데이터 불러오기")
         })
         .finally(() => {
-          dispatch({ type: "SET_LOADING", payload: false })
+          dispatch({type: "SET_LOADING", payload: false})
         })
     }
 
     fetchData()
-  }, [fetchPayers, fetchDefaultAmount, fetchBusinesses, setActionMessage])
-
-  // 액션 메시지 자동 제거 로직 추가 (useEffect 섹션에 추가)
-  // 기존 useEffect 아래에 추가
-  useEffect(() => {
-    if (!actionMessage) return
-
-    const timeout = setTimeout(
-      () => dispatch({ type: "SET_ACTION_MESSAGE", payload: null }),
-      actionMessage.type === "error" ? 60000 : 3000,
-    )
-
-    return () => clearTimeout(timeout) // 기존 타이머 정리
-  }, [actionMessage])
+  }, [fetchPayers, fetchDefaultAmount, fetchBusinesses])
 
   // 검색어 디바운싱 효과 추가 (useEffect 섹션에 추가)
   useEffect(() => {
@@ -828,7 +785,7 @@ const PayerManagement = () => {
   }, [filteredPayers])
 
   useEffect(() => {
-    dispatch({ type: "SET_FILTERED_PAYERS", payload: filteredPayersData })
+    dispatch({type: "SET_FILTERED_PAYERS", payload: filteredPayersData})
   }, [filteredPayersData])
 
   // ===== 이벤트 핸들러 =====
@@ -858,21 +815,19 @@ const PayerManagement = () => {
   const confirmDelete = useCallback(async () => {
     if (selectedPayer) {
       try {
-        // 환경에 상관없이 동일한 방식으로 삭제 요청
         await del(API_PATHS.PAYMENT_BY_ID(selectedPayer.id))
 
         // 성공 시 로컬 상태 업데이트 (함수형 업데이트 사용)
         deletePayer(selectedPayer.id)
-        setActionMessage("success", "납부자가 성공적으로 삭제되었습니다.")
+        handleSuccess("성공적으로 삭제되었습니다.")
 
         setDialog("delete", false)
         setDialog("edit", false)
       } catch (error) {
-        console.error("Error deleting payment:", error)
-        setActionMessage("error", "서버 연결 중 오류가 발생했습니다.")
+        handleError(error, "납부자 삭제")
       }
     }
-  }, [selectedPayer, deletePayer, setActionMessage, setDialog])
+  }, [selectedPayer, deletePayer, setDialog])
 
   // 납부자 정보 수정 저장
   const saveEdit = useCallback(async () => {
@@ -897,7 +852,7 @@ const PayerManagement = () => {
         }
 
         updatePayer(selectedPayer.id, updatedPayer)
-        setActionMessage("success", "납부자 정보가 성공적으로 수정되었습니다.")
+        handleSuccess("성공적으로 반영되었습니다.")
 
         setDialog("edit", false)
         if (selectedPayer.id !== undefined) {
@@ -910,11 +865,10 @@ const PayerManagement = () => {
           }
         }, 3000)
       } catch (error) {
-        console.error("Error updating payment:", error)
-        setActionMessage("error", "서버 연결 중 오류가 발생했습니다.")
+        handleError(error, "납부자 수정")
       }
     }
-  }, [selectedPayer, editForm, updatePayer, setActionMessage, setDialog, addRecentlyUpdated, removeRecentlyUpdated])
+  }, [selectedPayer, editForm, updatePayer, setDialog, addRecentlyUpdated, removeRecentlyUpdated])
 
   // 날짜 최신순으로 정렬하는 함수
   const sortPayersByDate = useCallback((payersToSort: Payer[]) => {
@@ -967,7 +921,7 @@ const PayerManagement = () => {
       const result = await post<Payer>(API_PATHS.PAYMENT, paymentData)
 
       if (result && result.id) {
-        setActionMessage("success", "납부자가 성공적으로 등록되었습니다.")
+        handleSuccess("성공적으로 반영되었습니다.")
         setDialog("new", false)
 
         const newPayer = {
@@ -983,11 +937,11 @@ const PayerManagement = () => {
         const updatedPayers = sortPayersByDate([...payers, newPayer])
 
         // 정렬된 배열로 상태 업데이트
-        dispatch({ type: "SET_PAYERS", payload: updatedPayers })
+        dispatch({type: "SET_PAYERS", payload: updatedPayers})
 
         // 필터링된 목록도 업데이트
         const filteredUpdatedPayers = applyFilters(updatedPayers)
-        dispatch({ type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers })
+        dispatch({type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers})
 
         if (newPayer.id !== undefined) {
           addRecentlyUpdated(String(newPayer.id))
@@ -998,19 +952,16 @@ const PayerManagement = () => {
         }, 3000)
 
         resetNewPayerForm()
-      } else {
-        setActionMessage("error", "API 요청 중 오류가 발생했습니다.")
       }
     } catch (error) {
-      console.error("예상치 못한 오류:", error)
-      setActionMessage("error", "예상치 못한 오류가 발생했습니다.")
+      handleError(error, "납부자 등록")
     } finally {
       setIsSaving(false)
+      setDialog("new", false)
     }
   }, [
     newPayerForm,
     setFormErrors,
-    setActionMessage,
     setDialog,
     payers,
     applyFilters,
@@ -1021,7 +972,7 @@ const PayerManagement = () => {
   ])
 
   const addBulkRow = useCallback(() => {
-    dispatch({ type: "ADD_BULK_ROW" })
+    dispatch({type: "ADD_BULK_ROW"})
     // 다음 렌더링 사이클에서 refs 배열 크기 조정
     setTimeout(() => {
       const currentLength = bulkInputRefs.current.length
@@ -1092,7 +1043,7 @@ const PayerManagement = () => {
         console.error("PayerId or BusinessId is undefined")
         return
       }
-      setIsUpdatingBusiness({ payerId, businessId })
+      setIsUpdatingBusiness({payerId, businessId})
 
       try {
         if (isParticipating) {
@@ -1113,8 +1064,8 @@ const PayerManagement = () => {
             })
 
             // 상태 업데이트
-            dispatch({ type: "SET_PAYERS", payload: updatedPayers })
-            setActionMessage("success", "사업 참여가 취소되었습니다.")
+            dispatch({type: "SET_PAYERS", payload: updatedPayers})
+            handleSuccess("성공적으로 반영되었습니다.")
           }
         } else {
           // Add participation
@@ -1140,18 +1091,17 @@ const PayerManagement = () => {
             })
 
             // 상태 업데이트
-            dispatch({ type: "SET_PAYERS", payload: updatedPayers })
-            setActionMessage("success", "사업에 참여되었습니다.")
+            dispatch({type: "SET_PAYERS", payload: updatedPayers})
+            handleSuccess("성공적으로 반영되었습니다.")
           }
         }
       } catch (error) {
-        console.error("Error updating business participation:", error)
-        setActionMessage("error", "사업 참여 상태 변경 중 오류가 발생했습니다.")
+        handleError(error, "사업 참여 상태 변경")
       } finally {
         setIsUpdatingBusiness(null)
       }
     },
-    [payers, setActionMessage],
+    [payers],
   )
 
   // 사업 참여 여부 확인 함수를 useCallback으로 최적화
@@ -1193,11 +1143,11 @@ const PayerManagement = () => {
             const updatedPayers = sortPayersByDate([...payers, newPayer])
 
             // 정렬된 배열로 상태 업데이트
-            dispatch({ type: "SET_PAYERS", payload: updatedPayers })
+            dispatch({type: "SET_PAYERS", payload: updatedPayers})
 
             // 필링된 목록도 업데이트
             const filteredUpdatedPayers = applyFilters(updatedPayers)
-            dispatch({ type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers })
+            dispatch({type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers})
 
             addRecentlyUpdated(String(newPayer.id))
 
@@ -1205,16 +1155,13 @@ const PayerManagement = () => {
               removeRecentlyUpdated(String(newPayer.id))
             }, 3000)
 
-            setMobileForm(false)
-            setActionMessage("success", "납부자가 성공적으로 등록되었습니다.")
-
-            return { success: true, message: "납부자가 성공적으로 등록되었습니다." }
-          } else {
-            return { success: false, message: "API 요청 중 오류가 발생했습니다." }
+            handleSuccess("성공적으로 반영되었습니다.")
           }
         } catch (error) {
-          console.error("예상치 못한 오류:", error)
-          return { success: false, message: "예상치 못한 오류가 발생했습니다." }
+          handleError(error, "납부자 저장")
+        } finally {
+          setDialog("new", false)
+          setMobileForm(false)
         }
       } else {
         // 수정 모드
@@ -1246,19 +1193,15 @@ const PayerManagement = () => {
                 removeRecentlyUpdated(String(selectedPayer.id))
               }, 3000)
 
-              setMobileForm(false)
-              setActionMessage("success", "납부자 정보가 성공적으로 수정되었습니다.")
-
-              return { success: true, message: "납부자 정보가 성공적으로 수정되었습니다." }
-            } else {
-              return { success: false, message: "서버 연결 중 오류가 발생했습니다." }
+              handleSuccess("성공적으로 반영되었습니다.")
             }
           } catch (error) {
-            console.error("Error updating payment:", error)
-            return { success: false, message: "서버 연결 중 오류가 발생했습니다." }
+            handleError(error, "납부자 수정")
+          } finally {
+            setMobileForm(false)
+            setDialog("edit", false)
           }
         }
-        return { success: false, message: "선택된 납부자가 없습니다." }
       }
     },
     [
@@ -1270,7 +1213,6 @@ const PayerManagement = () => {
       addRecentlyUpdated,
       removeRecentlyUpdated,
       setMobileForm,
-      setActionMessage,
       updatePayer,
       sortPayersByDate,
     ],
@@ -1285,20 +1227,16 @@ const PayerManagement = () => {
 
         // 성공 시 로컬 상태 업데이트
         deletePayer(selectedPayer.id)
-        setMobileForm(false)
-        setActionMessage("success", "납부자가 성공적으로 삭제되었습니다.")
 
-        return { success: true, message: "납부자가 성공적으로 삭제되었습니다." }
+        handleSuccess("성공적으로 반영되었습니다.")
       } catch (error) {
-        console.error("Error deleting payment:", error)
+        handleError(error, "납부자 삭제")
+      } finally {
         setMobileForm(false)
-        setActionMessage("error", "서버 연결 중 오류가 발생했습니다.")
-
-        return { success: false, message: "서버 연결 중 오류가 발생했습니다." }
       }
     }
-    return { success: false, message: "선택된 납부자가 없습니다." }
-  }, [selectedPayer, deletePayer, setMobileForm, setActionMessage])
+    return {success: false, message: "선택된 납부자가 없습니다."}
+  }, [selectedPayer, deletePayer, setMobileForm])
 
   // 상태에 따른 표시 형식 반환
   useCallback((status: "PAID" | "REFUNDED") => {
@@ -1306,16 +1244,18 @@ const PayerManagement = () => {
       case "PAID":
         return (
           <div className="flex justify-center">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              <Check className="h-3 w-3" />
+            <span
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <Check className="h-3 w-3"/>
             </span>
           </div>
         )
       case "REFUNDED":
         return (
           <div className="flex justify-center">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-              <RefreshCw className="h-3 w-3" />
+            <span
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              <RefreshCw className="h-3 w-3"/>
             </span>
           </div>
         )
@@ -1366,37 +1306,33 @@ const PayerManagement = () => {
   }, [businesses, visibleBusinesses])
 
   const refreshDashboardData = useCallback(async () => {
-    dispatch({ type: "SET_REFRESHING", payload: true })
+    dispatch({type: "SET_REFRESHING", payload: true})
 
     try {
       const [payersData] = await Promise.all([fetchPayers(), fetchDefaultAmount(), fetchBusinesses()])
 
-      dispatch({ type: "SET_FILTERED_PAYERS", payload: payersData })
-      setActionMessage("success", "납부자 목록이 새로고침되었습니다.")
+      dispatch({type: "SET_FILTERED_PAYERS", payload: payersData})
+      handleSuccess("새로고침되었습니다.")
     } catch (error) {
-      console.error("Error refreshing data:", error)
-      setActionMessage(
-        "error",
-        `데이터 새로고침 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      )
+      handleError(error, "납부자 목록 새로고침")
     } finally {
-      dispatch({ type: "SET_REFRESHING", payload: false })
+      dispatch({type: "SET_REFRESHING", payload: false})
     }
-  }, [fetchPayers, fetchDefaultAmount, fetchBusinesses, setActionMessage])
+  }, [fetchPayers, fetchDefaultAmount, fetchBusinesses])
 
   // 일괄 등록 입력 필드 참조를 위한 ref 배열
   const bulkInputRefs = useRef<Array<Array<HTMLInputElement | HTMLButtonElement | null>>>([])
 
   const removeBulkRow = useCallback((index: number) => {
-    dispatch({ type: "REMOVE_BULK_ROW", payload: index })
+    dispatch({type: "REMOVE_BULK_ROW", payload: index})
   }, [])
 
   const updateBulkRow = useCallback((index: number, field: string, value: string) => {
-    dispatch({ type: "UPDATE_BULK_ROW", payload: { index, field, value } })
+    dispatch({type: "UPDATE_BULK_ROW", payload: {index, field, value}})
   }, [])
 
   const setBulkRowError = useCallback((index: number, field: string, value: boolean) => {
-    dispatch({ type: "SET_BULK_ROW_ERROR", payload: { index, field, value } })
+    dispatch({type: "SET_BULK_ROW_ERROR", payload: {index, field, value}})
   }, [])
 
   const saveBulkRegistration = useCallback(async () => {
@@ -1419,7 +1355,6 @@ const PayerManagement = () => {
     })
 
     if (hasErrors) {
-      setActionMessage("error", "모든 필드를 올바르게 입력해주세요.")
       setIsSaving(false)
       return
     }
@@ -1455,17 +1390,16 @@ const PayerManagement = () => {
 
       // 새 납부자들을 추가하고 날짜 최신순으로 정렬
       const updatedPayers = sortPayersByDate([...payers, ...newPayers])
-      dispatch({ type: "SET_PAYERS", payload: updatedPayers })
+      dispatch({type: "SET_PAYERS", payload: updatedPayers})
 
       // 필터링된 목록도 업데이트
       const filteredUpdatedPayers = applyFilters(updatedPayers)
-      dispatch({ type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers })
+      dispatch({type: "SET_FILTERED_PAYERS", payload: filteredUpdatedPayers})
 
       // 성공 메시지 및 다이얼로그 닫기
-      setIsSaving(false)
-      setActionMessage("success", `${results.length}명의 납부자가 성공적으로 등록되었습니다.`)
-      dispatch({ type: "RESET_BULK_REGISTRATION" })
-      dispatch({ type: "SET_BULK_REGISTRATION", payload: { show: false } })
+      handleSuccess(`${results.length}명의 납부자가 성공적으로 등록되었습니다.`)
+      dispatch({type: "RESET_BULK_REGISTRATION"})
+      dispatch({type: "SET_BULK_REGISTRATION", payload: {show: false}})
 
       // 애니메이션 효과
       newPayers.forEach((payer) => {
@@ -1475,14 +1409,13 @@ const PayerManagement = () => {
         }, 3000)
       })
     } catch (error) {
-      console.error("일괄 등록 중 오류:", error)
-      setActionMessage("error", "일괄 등록 중 오류가 발생했습니다.")
+      handleError(error, "납부자 일괄 등록")
+    } finally {
       setIsSaving(false)
     }
   }, [
     bulkRegistration.rows,
     setBulkRowError,
-    setActionMessage,
     payers,
     sortPayersByDate,
     applyFilters,
@@ -1493,47 +1426,17 @@ const PayerManagement = () => {
   // ===== 렌더링 =====
   return (
     <div className="max-w-3xl mx-auto">
-      {/* 알림 메시지 */}
-      {actionMessage && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-md transition-opacity duration-300 overflow-hidden ${
-            actionMessage.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : "bg-red-100 text-red-800 border border-red-200"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span>{actionMessage.message}</span>
-            <button
-              onClick={() => dispatch({ type: "SET_ACTION_MESSAGE", payload: null })}
-              className="ml-4 text-gray-500 hover:text-gray-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 mt-2">
-            <div
-              className={`h-full ${
-                actionMessage.type === "success"
-                  ? "bg-green-500 animate-shrink-left-success"
-                  : "bg-red-500 animate-shrink-left-error"
-              }`}
-            ></div>
-          </div>
-        </div>
-      )}
-
       {/* 헤더 영역 */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold md:block hidden">납부자 관리</h1>
       </div>
 
-      {/* 검색 및 필터 영 */}
+      {/* 검색 및 필터 영역 */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400"/>
               <Input
                 placeholder="학번 검색"
                 className="pl-10"
@@ -1546,7 +1449,7 @@ const PayerManagement = () => {
               variant="outline"
               className="gap-2 w-12 h-10 md:w-auto md:h-auto"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4"/>
               <span className="hidden md:inline">등록</span>
             </Button>
             <Popover open={isFilterOpen} onOpenChange={(open) => setFilter("isFilterOpen", open)}>
@@ -1556,10 +1459,11 @@ const PayerManagement = () => {
                   className="gap-2 relative w-12 h-10 md:w-auto md:h-auto"
                   onClick={() => setFilter("isFilterOpen", !isFilterOpen)}
                 >
-                  <Filter className={`h-4 w-4 ${isFilterActive() ? "text-primary-foreground" : ""}`} />
+                  <Filter className={`h-4 w-4 ${isFilterActive() ? "text-primary-foreground" : ""}`}/>
                   <span className="hidden md:inline">필터</span>
                   {isFilterActive() && (
-                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                    <span
+                      className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
                       {activeFilterCount}
                     </span>
                   )}
@@ -1576,7 +1480,7 @@ const PayerManagement = () => {
                       onValueChange={(value) => setFilter("statusFilter", value === "all" ? null : value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="상태 선택" />
+                        <SelectValue placeholder="상태 선택"/>
                       </SelectTrigger>
                       <SelectContent className="z-[150]">
                         <SelectItem value="all">전체</SelectItem>
@@ -1593,7 +1497,7 @@ const PayerManagement = () => {
                       onValueChange={(value) => setFilter("typeFilter", value === "all" ? null : value)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="유형 선택" />
+                        <SelectValue placeholder="유형 선택"/>
                       </SelectTrigger>
                       <SelectContent className="z-[150]">
                         <SelectItem value="all">전체</SelectItem>
@@ -1683,7 +1587,7 @@ const PayerManagement = () => {
               disabled={isLoading || isRefreshing}
               className="w-12 h-10 md:w-auto md:h-auto"
             >
-              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""} ${isMobile ? "" : "mr-2"}`} />
+              <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""} ${isMobile ? "" : "mr-2"}`}/>
               <span className="hidden md:inline">{isRefreshing ? "새로고침 중..." : "새로고침"}</span>
             </Button>
           </div>
@@ -1701,19 +1605,24 @@ const PayerManagement = () => {
               <table className="w-full border-collapse">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                     날짜
                   </th>
-                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                     학번
                   </th>
-                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                     상태
                   </th>
-                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                     유형
                   </th>
-                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                     금액
                   </th>
                   {/* Add business columns - 필터링된 사업만 표시 */}
@@ -1725,7 +1634,8 @@ const PayerManagement = () => {
                       {business.name}
                     </th>
                   ))}
-                  <th className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
+                  <th
+                    className="h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs md:text-sm whitespace-nowrap">
                     관리
                   </th>
                 </tr>
@@ -1778,7 +1688,7 @@ const PayerManagement = () => {
               <span className="font-medium text-gray-700">{totalActivePayers}</span>
             )}
             명의 납부자가 있습니다.
-            {isNarrowScreen && <br />}
+            {isNarrowScreen && <br/>}
             {!isNarrowScreen && " "}
             (총 <span className="font-medium text-gray-700">{totalAmount.toLocaleString()}</span>원 | 환불자 제외)
           </div>
@@ -1800,7 +1710,7 @@ const PayerManagement = () => {
               <Input
                 id="id"
                 value={editForm.id}
-                onChange={(e) => setEditForm({ id: e.target.value })}
+                onChange={(e) => setEditForm({id: e.target.value})}
                 className="col-span-3"
                 autoFocus={false}
               />
@@ -1813,7 +1723,7 @@ const PayerManagement = () => {
                 id="amount"
                 type="number"
                 value={editForm.amount}
-                onChange={(e) => setEditForm({ amount: e.target.value })}
+                onChange={(e) => setEditForm({amount: e.target.value})}
                 className="col-span-3"
               />
             </div>
@@ -1825,7 +1735,7 @@ const PayerManagement = () => {
                 id="payment-date"
                 type="date"
                 value={editForm.date}
-                onChange={(e) => setEditForm({ date: e.target.value })}
+                onChange={(e) => setEditForm({date: e.target.value})}
                 className="col-span-3"
               />
             </div>
@@ -1835,14 +1745,14 @@ const PayerManagement = () => {
                 <Button
                   type="button"
                   variant={editForm.type === "계좌이체" ? "default" : "outline"}
-                  onClick={() => setEditForm({ type: "계좌이체" })}
+                  onClick={() => setEditForm({type: "계좌이체"})}
                 >
                   계좌이체
                 </Button>
                 <Button
                   type="button"
                   variant={editForm.type === "현장납부" ? "default" : "outline"}
-                  onClick={() => setEditForm({ type: "현장납부" })}
+                  onClick={() => setEditForm({type: "현장납부"})}
                 >
                   현장납부
                 </Button>
@@ -1854,17 +1764,17 @@ const PayerManagement = () => {
                 <Button
                   type="button"
                   variant={editForm.status === "PAID" ? "default" : "outline"}
-                  onClick={() => setEditForm({ status: "PAID" })}
+                  onClick={() => setEditForm({status: "PAID"})}
                 >
-                  <Check className="h-4 w-4 mr-2" />
+                  <Check className="h-4 w-4 mr-2"/>
                   납부 완료
                 </Button>
                 <Button
                   type="button"
                   variant={editForm.status === "REFUNDED" ? "default" : "outline"}
-                  onClick={() => setEditForm({ status: "REFUNDED" })}
+                  onClick={() => setEditForm({status: "REFUNDED"})}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="h-4 w-4 mr-2"/>
                   환불 완료
                 </Button>
               </div>
@@ -1919,8 +1829,8 @@ const PayerManagement = () => {
                 id="new-id"
                 value={newPayerForm.id}
                 onChange={(e) => {
-                  setNewPayerForm({ id: e.target.value })
-                  if (formErrors.id) setFormErrors({ id: false })
+                  setNewPayerForm({id: e.target.value})
+                  if (formErrors.id) setFormErrors({id: false})
                 }}
                 className={cn("col-span-3", formErrors.id && "border-red-500 focus-visible:ring-red-500")}
                 placeholder="이름으로 입금하였을 경우 입금자명 입력"
@@ -1938,44 +1848,13 @@ const PayerManagement = () => {
                 type="number"
                 value={newPayerForm.amount}
                 onChange={(e) => {
-                  setNewPayerForm({ amount: e.target.value })
-                  if (formErrors.amount) setFormErrors({ amount: false })
+                  setNewPayerForm({amount: e.target.value})
+                  if (formErrors.amount) setFormErrors({amount: false})
                 }}
                 className={cn("col-span-3", formErrors.amount && "border-red-500 focus-visible:ring-red-500")}
               />
               {formErrors.amount && (
                 <p className="text-red-500 text-xs col-start-2 col-span-3 mt-1">금액을 입력해주세요</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="new-payment-type" className="text-right">
-                유형
-              </Label>
-              <div className="flex items-center col-span-3 gap-2">
-                <Button
-                  type="button"
-                  variant={newPayerForm.type === "계좌이체" ? "default" : "outline"}
-                  onClick={() => {
-                    setNewPayerForm({ type: "계좌이체" })
-                    if (formErrors.type) setFormErrors({ type: false })
-                  }}
-                >
-                  계좌이체
-                </Button>
-                <Button
-                  type="button"
-                  variant={newPayerForm.type === "현장납부" ? "default" : "outline"}
-                  onClick={() => {
-                    setNewPayerForm({ type: "현장납부" })
-                    if (formErrors.type) setFormErrors({ type: false })
-                  }}
-                >
-                  현장납부
-                </Button>
-              </div>
-              {formErrors.type && (
-                <p className="text-red-500 text-xs col-start-2 col-span-3 mt-1">유형을 선택해주세요</p>
               )}
             </div>
 
@@ -1988,13 +1867,44 @@ const PayerManagement = () => {
                 type="date"
                 value={newPayerForm.date}
                 onChange={(e) => {
-                  setNewPayerForm({ date: e.target.value })
-                  if (formErrors.date) setFormErrors({ date: false })
+                  setNewPayerForm({date: e.target.value})
+                  if (formErrors.date) setFormErrors({date: false})
                 }}
                 className={cn("col-span-3", formErrors.date && "border-red-500 focus-visible:ring-red-500")}
               />
               {formErrors.date && (
                 <p className="text-red-500 text-xs col-start-2 col-span-3 mt-1">날짜를 입력해주세요</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="new-payment-type" className="text-right">
+                유형
+              </Label>
+              <div className="flex items-center col-span-3 gap-2">
+                <Button
+                  type="button"
+                  variant={newPayerForm.type === "계좌이체" ? "default" : "outline"}
+                  onClick={() => {
+                    setNewPayerForm({type: "계좌이체"})
+                    if (formErrors.type) setFormErrors({type: false})
+                  }}
+                >
+                  계좌이체
+                </Button>
+                <Button
+                  type="button"
+                  variant={newPayerForm.type === "현장납부" ? "default" : "outline"}
+                  onClick={() => {
+                    setNewPayerForm({type: "현장납부"})
+                    if (formErrors.type) setFormErrors({type: false})
+                  }}
+                >
+                  현장납부
+                </Button>
+              </div>
+              {formErrors.type && (
+                <p className="text-red-500 text-xs col-start-2 col-span-3 mt-1">유형을 선택해주세요</p>
               )}
             </div>
           </div>
@@ -2003,7 +1913,8 @@ const PayerManagement = () => {
               <button
                 onClick={() => {
                   setDialog("new", false)
-                  dispatch({ type: "SET_BULK_REGISTRATION", payload: { show: true } })
+                  dispatch({type: "RESET_BULK_REGISTRATION"})
+                  dispatch({type: "SET_BULK_REGISTRATION", payload: {show: true}})
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800 underline underline-offset-2 hover:underline-offset-4 transition-all duration-200"
               >
@@ -2017,7 +1928,7 @@ const PayerManagement = () => {
               <Button onClick={addNewPayer} disabled={isSaving}>
                 {isSaving ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                     등록 중...
                   </>
                 ) : (
@@ -2051,7 +1962,10 @@ const PayerManagement = () => {
                 type: "계좌이체" as "계좌이체" | "현장납부",
               }
           }
-          onSave={handleMobileFormSave}
+          onSave={async (formData: any) => {
+            await handleMobileFormSave(formData);
+            return {success: true, message: "성공"};
+          }}
           onDelete={mobileForm.mode === "edit" ? handleMobileFormDelete : undefined}
           onCancel={() => setMobileForm(false)}
         />
@@ -2060,7 +1974,7 @@ const PayerManagement = () => {
       {/* 일괄 납부자 등록 다이얼로그 */}
       <Dialog
         open={bulkRegistration.show}
-        onOpenChange={(open) => dispatch({ type: "SET_BULK_REGISTRATION", payload: { show: open } })}
+        onOpenChange={(open) => dispatch({type: "SET_BULK_REGISTRATION", payload: {show: open}})}
       >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
@@ -2075,7 +1989,7 @@ const PayerManagement = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">총 {bulkRegistration.rows.length}명</span>
                 <Button variant="outline" size="sm" onClick={addBulkRow} className="gap-2">
-                  <Plus className="h-4 w-4" />행 추가
+                  <Plus className="h-4 w-4"/>행 추가
                 </Button>
               </div>
 
@@ -2085,7 +1999,7 @@ const PayerManagement = () => {
                     <thead className="bg-gray-50 sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        학번/이름
+                        학번
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         금액
@@ -2128,7 +2042,7 @@ const PayerManagement = () => {
                         <td className="px-3 py-2">
                           <Input
                             type="number"
-                            value={newPayerForm.amount}
+                            value={row.amount}
                             onChange={(e) => {
                               updateBulkRow(rowIndex, "amount", e.target.value)
                               if (row.errors.amount) setBulkRowError(rowIndex, "amount", false)
@@ -2179,7 +2093,7 @@ const PayerManagement = () => {
                               }}
                               onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 3)}
                             >
-                              <SelectValue />
+                              <SelectValue/>
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="계좌이체">계좌이체</SelectItem>
@@ -2202,7 +2116,7 @@ const PayerManagement = () => {
                             }}
                             onKeyDown={(e) => handleBulkInputKeyDown(e, rowIndex, 4)}
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-4 w-4"/>
                           </Button>
                         </td>
                       </tr>
@@ -2218,8 +2132,8 @@ const PayerManagement = () => {
             <Button
               variant="outline"
               onClick={() => {
-                dispatch({ type: "RESET_BULK_REGISTRATION" })
-                dispatch({ type: "SET_BULK_REGISTRATION", payload: { show: false } })
+                dispatch({type: "RESET_BULK_REGISTRATION"})
+                dispatch({type: "SET_BULK_REGISTRATION", payload: {show: false}})
                 bulkInputRefs.current = [] // refs 초기화 추가
               }}
             >

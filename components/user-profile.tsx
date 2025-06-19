@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { logout } from "@/lib/auth"
 import { post } from "@/lib/api-client"
 import { isV0Preview } from "@/lib/utils"
+import {API_PATHS} from "@/lib/api-config";
 
 export function UserProfile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -16,7 +17,7 @@ export function UserProfile() {
 
       // 서버 API 호출
       if (!isV0Preview()) {
-        await post("/api/auth/logout", {})
+        await post(`${API_PATHS.AUTH_LOGOUT}`)
       }
 
       // 클라이언트 측 로그아웃 처리

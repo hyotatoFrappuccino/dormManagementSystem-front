@@ -1,18 +1,19 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-import type { Building, Round } from "@/lib/interfaces"
+import {type ClassValue, clsx} from "clsx"
+import {twMerge} from "tailwind-merge"
+import type {Building, Round} from "@/lib/interfaces"
+import {NotificationMessage} from "@/components/contexts/NotificationContext";
 
 // cn 함수
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// 환경 감지 함수
+// 환경 감지
 export function isV0Preview(): boolean {
   return process.env.NEXT_PUBLIC_IS_V0_PREVIEW === "true"
 }
 
-// 날짜 관련 함수
+// 날짜 관련
 export function formatDate(date: string | Date): string {
   if (!date) return "-"
 
@@ -25,7 +26,8 @@ export function formatDate(date: string | Date): string {
 
   return `${year}-${month}-${day}`
 }
-// 상태 텍스트/색상 변환 함수
+
+// 상태 텍스트/색상 변환
 export function getPaymentStatusText(isPaid: "PAID" | "REFUNDED" | "NONE"): string {
   switch (isPaid) {
     case "PAID":
@@ -60,7 +62,7 @@ export function getAgreementStatusColor(isAgreed: boolean | null): string {
   return "text-red-600"
 }
 
-// 학번 유효성 검사 함수
+// 학번 유효성 검사
 export function validateStudentId(id: string): boolean {
   // 9자 또는 10자인지 확인
   const isValidLength = id.length === 9 || id.length === 10
@@ -70,7 +72,7 @@ export function validateStudentId(id: string): boolean {
   return isValidLength && isValidCharacters
 }
 
-// 건물 타입 텍스트 변환 함수
+// 건물 타입 텍스트 변환
 export function getBuildingTypeText(type: string): string {
   switch (type) {
     case "REFRIGERATOR":
@@ -86,28 +88,28 @@ export function getBuildingTypeText(type: string): string {
   }
 }
 
-// Add a utility function for application type text
+// 유형별 색깔 반환
 export function getApplicationTypeText(type: string | undefined): { text: string; color?: string } {
-  if (!type) return { text: "-" }
+  if (!type) return {text: "-"}
 
   switch (type) {
     case "REFRIGERATOR":
-      return { text: "냉장", color: "rgb(37,99,235)" }
+      return {text: "냉장", color: "rgb(37,99,235)"}
     case "FREEZER":
-      return { text: "냉동", color: "rgb(22,163,74)" }
+      return {text: "냉동", color: "rgb(22,163,74)"}
     case "COMBINED":
-      return { text: "통합" }
+      return {text: "통합"}
     default:
-      return { text: "-" }
+      return {text: "-"}
   }
 }
 
-// 건물 총 슬롯 계산 함수
+// 건물 총 슬롯 계산
 export function calculateTotalSlots(building: Building): number {
   return (building.fridgeSlots || 0) + (building.freezerSlots || 0) + (building.integratedSlots || 0)
 }
 
-// 현재 날짜가 포함된 회차를 찾는 함수
+// 현재 날짜가 포함된 회차 반환
 export function findCurrentRound(rounds: Round[], currentDate: Date = new Date()): Round | null {
   const today = currentDate.toISOString().split("T")[0] // YYYY-MM-DD 형식
 
@@ -132,7 +134,7 @@ export function findCurrentRound(rounds: Round[], currentDate: Date = new Date()
   return null
 }
 
-// 사용량 상태 및 색상 관련 함수
+// 사용율별 상태 및 색상
 export function getUsageStatus(usage: number, total: number): "여유" | "임박" | "마감" | "초과" {
   if (total === 0) return "마감" // 슬롯이 0인 경우
 
@@ -142,6 +144,15 @@ export function getUsageStatus(usage: number, total: number): "여유" | "임박
   if (percentage < 100) return "임박"
   if (percentage === 100) return "마감"
   return "초과"
+}
+
+// 사용율별 대시보드 색깔 반환
+export function getSlotStatusColor(remaining: number, total: number): string {
+  if (remaining <= 0) return "text-red-600"
+  const percentage = (remaining / total) * 100
+  if (percentage < 10) return "text-red-600"
+  if (percentage < 30) return "text-yellow-600"
+  return "text-green-600"
 }
 
 // 로컬 스토리지 관련 유틸리티
@@ -201,7 +212,7 @@ export function convertToCSV(data: any[], type: string): string {
 export function downloadCSV(csvContent: string, filename: string): void {
   // BOM(Byte Order Mark) 추가하여 한글 깨짐 방지
   const BOM = "\uFEFF"
-  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8" })
+  const blob = new Blob([BOM + csvContent], {type: "text/csv;charset=utf-8"})
 
   // 다운로드 링크 생성
   const url = URL.createObjectURL(blob)
@@ -216,16 +227,47 @@ export function downloadCSV(csvContent: string, filename: string): void {
   document.body.removeChild(link)
 }
 
-export function getSlotStatusColor(remaining: number, total: number): string {
-  if (remaining <= 0) return "text-red-600"
-  const percentage = (remaining / total) * 100
-  if (percentage < 10) return "text-red-600"
-  if (percentage < 30) return "text-yellow-600"
-  return "text-green-600"
-}
-
 // 역할 키와 타이틀 매핑 함수
 export function getRoleTitleByKey(roleKey: string, adminRoles: { key: string; title: string }[]): string {
   const role = adminRoles.find((r) => r.key === roleKey)
   return role ? role.title : roleKey
+}
+
+let globalShowNotification: ((message: NotificationMessage) => void) | null = null;
+
+export const initializeNotification = (
+  showNotification: (message: NotificationMessage) => void
+) => {
+  globalShowNotification = showNotification;
+};
+
+export const showNotification = (message: NotificationMessage) => {
+  if (globalShowNotification) {
+    globalShowNotification(message);
+  } else {
+    console.error('Notification system not initialized');
+  }
+};
+
+export const handleError = (error: unknown, context: string) => {
+  console.error(`${context} 중 오류 발생:`, error);
+
+  showNotification({
+    type: "error",
+    message: `오류: ${error instanceof Error ? error.message : String(error)}`,
+  });
+};
+
+export const handleSuccess = (message: string) => {
+  showNotification({
+    type: "success",
+    message,
+  });
+};
+
+export const handleInfo = (message: string) => {
+  showNotification({
+    type: "info",
+    message,
+  });
 }

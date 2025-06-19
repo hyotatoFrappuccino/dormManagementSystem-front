@@ -45,4 +45,7 @@ export const API_PATHS = {
   ADMINS: "/api/v1/admins",
   ADMINS_BY_ID: (id: number | string) => `/api/v1/admins/${id}`,
   ADMINS_ROLES: "/api/v1/admins/roles",
+
+  // 인증
+  AUTH_LOGOUT: "/api/v1/auth/logout",
 }

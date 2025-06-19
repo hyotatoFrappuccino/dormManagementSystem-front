@@ -1,7 +1,7 @@
-import { getApiUrl } from "@/lib/api-config"
-import { isV0Preview } from "@/lib/utils"
-import { getStoredMockData, PATH_TO_DEFAULT_KEY, DEFAULT_DATA } from "@/lib/mock-data"
-import { getAccessToken, logout } from "@/lib/auth"
+import {getApiUrl} from "@/lib/api-config"
+import {isV0Preview} from "@/lib/utils"
+import {getStoredMockData, PATH_TO_DEFAULT_KEY, DEFAULT_DATA} from "@/lib/mock-data"
+import {getAccessToken, logout} from "@/lib/auth"
 
 // 1. HttpMethod 타입 정의 추가
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE"
@@ -201,7 +201,7 @@ export function getMockData<T>(path: string): T {
 function saveMockData<T>(path: string, data: any): T {
   // 특별한 경로 처리 (예: 냉장고 신청)
   if (path === "/api/fridge") {
-    const { roundId, studentId, type } = data
+    const {roundId, studentId, type} = data
     const fridgeData = getStoredMockData("fridge")
 
     // 학번에 해당하는 데이터가 없으면 기본 데이터로 초기화
@@ -246,7 +246,7 @@ function saveMockData<T>(path: string, data: any): T {
     roundsFridgeApplications[roundId][type]++
     localStorage.setItem("roundsFridgeApplications", JSON.stringify(roundsFridgeApplications))
 
-    return { success: true } as T
+    return {success: true} as T
   }
 
   // 일반적인 경로 처리
@@ -268,7 +268,7 @@ function saveMockData<T>(path: string, data: any): T {
     const newId = currentData.length > 0 ? Math.max(...currentData.map((item) => item.id || 0)) + 1 : 1
 
     // If data doesn't have an ID, add one
-    const newItem = { ...data, id: data.id || newId }
+    const newItem = {...data, id: data.id || newId}
 
     // Add to the array
     const updatedData = [...currentData, newItem]
@@ -278,7 +278,7 @@ function saveMockData<T>(path: string, data: any): T {
     return newItem as unknown as T
   } else if (typeof currentData === "object" && currentData !== null) {
     // If it's an object, merge the new data
-    const updatedData = { ...currentData, ...data }
+    const updatedData = {...currentData, ...data}
     localStorage.setItem(storageKey, JSON.stringify(updatedData))
     return updatedData as T
   } else {

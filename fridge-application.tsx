@@ -266,7 +266,7 @@ export default function RefrigeratorApplication() {
 
   // 회차 선택 시 이미 신청된 회차인 경우 해당 유형을 자동으로 선택
   useEffect(() => {
-    if (selectedRound && typeof selectedRound.id === "number" && isRoundApplied(selectedRound.id)) {
+    if (selectedRound && isRoundApplied(selectedRound.id)) {
       const application = applications.find((app) => app.round?.id === selectedRound.id)
       if (application) {
         switch (application.type) {
@@ -629,13 +629,14 @@ export default function RefrigeratorApplication() {
                   onKeyDown={handleKeyDown}
                   ref={inputRef}
                   disabled={isLoading}
+                  autoComplete="off"
                 />
                 {studentIdError && <p className="text-sm text-red-500 mt-1">{studentIdError}</p>}
               </div>
               <Button onClick={handleSearch} disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
                     조회 중...
                   </>
                 ) : (
@@ -648,14 +649,14 @@ export default function RefrigeratorApplication() {
 
         {error && (
           <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4"/>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {isSubmitted && (
           <Alert className="bg-green-50 border-green-200 text-green-800">
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CheckCircle className="h-4 w-4 text-green-600"/>
             <AlertDescription className="flex flex-col">
               <span>
                 {userData?.name}님의 {submittedType} 신청이 {submittedRound?.name} 회차에 완료되었습니다.
@@ -722,17 +723,17 @@ export default function RefrigeratorApplication() {
                     <SelectTrigger id="round-select" className="w-full pl-3">
                       {isLoadingRounds ? (
                         <div className="flex items-center">
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin"/>
                           회차 로딩 중...
                         </div>
                       ) : (
-                        <SelectValue placeholder="회차를 선택하세요" />
+                        <SelectValue placeholder="회차를 선택하세요"/>
                       )}
                     </SelectTrigger>
                     <SelectContent>
                       {rounds.map((round, index) => {
-                        const isApplied = typeof round.id === "number" && isRoundApplied(round.id)
-                        const appliedType = typeof round.id === "number" ? getAppliedType(round.id) : null
+                        const isApplied = isRoundApplied(round.id)
+                        const appliedType = getAppliedType(round.id)
 
                         return (
                           <SelectItem
@@ -796,9 +797,9 @@ export default function RefrigeratorApplication() {
                                 applicationType === "냉장고"
                                   ? "text-white"
                                   : getSlotStatusColor(
-                                      buildingData.fridgeSlots - (buildingData.fridgeUsage || 0),
-                                      buildingData.fridgeSlots,
-                                    )
+                                    buildingData.fridgeSlots - (buildingData.fridgeUsage || 0),
+                                    buildingData.fridgeSlots,
+                                  )
                               }
                             >
                               ({buildingData.fridgeSlots - (buildingData.fridgeUsage || 0)}/{buildingData.fridgeSlots})
@@ -831,9 +832,9 @@ export default function RefrigeratorApplication() {
                                 applicationType === "냉동고"
                                   ? "text-white"
                                   : getSlotStatusColor(
-                                      buildingData.freezerSlots - (buildingData.freezerUsage || 0),
-                                      buildingData.freezerSlots,
-                                    )
+                                    buildingData.freezerSlots - (buildingData.freezerUsage || 0),
+                                    buildingData.freezerSlots,
+                                  )
                               }
                             >
                               ({buildingData.freezerSlots - (buildingData.freezerUsage || 0)}/
@@ -865,9 +866,9 @@ export default function RefrigeratorApplication() {
                                 applicationType === "통합형"
                                   ? "text-white"
                                   : getSlotStatusColor(
-                                      buildingData.integratedSlots - (buildingData.integratedUsage || 0),
-                                      buildingData.integratedSlots,
-                                    )
+                                    buildingData.integratedSlots - (buildingData.integratedUsage || 0),
+                                    buildingData.integratedSlots,
+                                  )
                               }
                             >
                               ({buildingData.integratedSlots - (buildingData.integratedUsage || 0)}/
@@ -885,7 +886,7 @@ export default function RefrigeratorApplication() {
               <Button onClick={() => handleSubmit()} className="w-full" disabled={isButtonDisabled || !selectedRound}>
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
                     {isSelectedRoundApplied ? "수정 중..." : "반영 중..."}
                   </>
                 ) : isSelectedRoundApplied ? (

@@ -2,47 +2,57 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import {useState, useEffect, useCallback} from "react"
 
 // lib
-import type { Building, Administrator, AdminRole, Round, Payer, Consent, Business } from "@/lib/interfaces"
-import { API_PATHS } from "@/lib/api-config"
-import { get, post, put, del } from "@/lib/api-client"
-import { getBuildingTypeText as utilsGetBuildingTypeText, calculateTotalSlots as utilsCalculateTotalSlots, convertToCSV as utilsConvertToCSV, downloadCSV, setStorageValue, formatDate } from "@/lib/utils"
+import type {Building, Administrator, AdminRole, Round, Payer, Consent, Business} from "@/lib/interfaces"
+import {API_PATHS} from "@/lib/api-config"
+import {get, post, put, del} from "@/lib/api-client"
+import {
+  getBuildingTypeText as utilsGetBuildingTypeText,
+  calculateTotalSlots as utilsCalculateTotalSlots,
+  convertToCSV as utilsConvertToCSV,
+  downloadCSV,
+  setStorageValue,
+  formatDate, handleError, handleSuccess
+} from "@/lib/utils"
 
 // components ui
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {Label} from "@/components/ui/label"
+import {Input} from "@/components/ui/input"
+import {Button} from "@/components/ui/button"
+import {Alert, AlertDescription} from "@/components/ui/alert"
+import {Card, CardContent, CardHeader} from "@/components/ui/card"
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
 
-import { AlertCircle, RefreshCw, FileOutputIcon as FileExport, AlertTriangle, Pencil, Trash2, Plus, X, Loader2 } from "lucide-react"
-
-import { useForm } from "react-hook-form"
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
+import {
+  AlertCircle,
+  RefreshCw,
+  FileOutputIcon as FileExport,
+  AlertTriangle,
+  Pencil,
+  Trash2,
+  Plus
+} from "lucide-react"
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general")
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [default_amount, setDefaultAmount] = useState("7000")
   const [google_sheet_id, setGoogleSheetId] = useState("")
   const [isExportingPayers, setIsExportingPayers] = useState(false)
   const [isExportingConsents, setIsExportingConsents] = useState(false)
-  const [exportSuccess, setExportSuccess] = useState(false)
 
   // 초기화 관련 상태
-  const [isResetPayersDialogOpen, setIsResetPayersDialogOpen] = useState(false)
-  const [isResetConsentsDialogOpen, setIsResetConsentsDialogOpen] = useState(false)
-  const [isResetFridgeDialogOpen, setIsResetFridgeDialogOpen] = useState(false)
   const [resetConfirmCount, setResetConfirmCount] = useState(0)
   const [resetType, setResetType] = useState<"payers" | "consents" | "fridge" | null>(null)
-  const [isResetting, setIsResetting] = useState(false)
+
+  // 다이얼로그 상태
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<"addBuilding" | "deleteBuilding" | "addAdministrator" | "addRound" | "resetPayers" | "resetConsents" | "resetFridge" | "building" | "administrator" | "round" | "addBusiness" | "deleteRound" | "deleteBusiness" | "deleteAllFridge" | "deleteAllConsents" | "deleteAllPayers" | "deleteAdministrator" | null>(null);
 
   // 건물 관리 관련 상태
   const [buildings, setBuildings] = useState<Building[]>([])
@@ -60,7 +70,6 @@ export default function Settings() {
   const [roundError, setRoundError] = useState<string | null>(null)
 
   // 건물 추가/수정 다이얼로그 관련 상태
-  const [isBuildingDialogOpen, setIsBuildingDialogOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState<Building | null>(null)
   const [buildingName, setBuildingName] = useState("")
@@ -70,7 +79,6 @@ export default function Settings() {
   const [buildingIntegratedSlots, setBuildingIntegratedSlots] = useState("")
 
   // 관리자 다이얼로그 관련 상태
-  const [isAdministratorDialogOpen, setIsAdministratorDialogOpen] = useState(false)
   const [administratorEmail, setAdministratorEmail] = useState("")
   const [administratorName, setAdministratorName] = useState("")
   const [administratorRole, setAdministratorRole] = useState("")
@@ -78,7 +86,6 @@ export default function Settings() {
   const [currentAdministrator, setCurrentAdministrator] = useState<Administrator | null>(null)
 
   // 회차 추가/수정 다이얼로그 관련 상태
-  const [isRoundDialogOpen, setIsRoundDialogOpen] = useState(false)
   const [isEditRoundMode, setIsEditRoundMode] = useState(false)
   const [currentRound, setCurrentRound] = useState<Round | null>(null)
   const [roundName, setRoundName] = useState("")
@@ -86,20 +93,14 @@ export default function Settings() {
   const [roundEndDate, setRoundEndDate] = useState("")
   const [roundPassword, setRoundPassword] = useState("")
 
-  // 건물 삭제 다이얼로그 관련 상태
-  const [isDeleteBuildingDialogOpen, setIsDeleteBuildingDialogOpen] = useState(false)
+  // 건물 삭제 관련 상태
   const [buildingToDelete, setBuildingToDelete] = useState<Building | null>(null)
-  const [isDeletingBuilding, setIsDeletingBuilding] = useState(false)
 
-  // 관리자 삭제 다이얼로그 관련 상태
-  const [isDeleteAdministratorDialogOpen, setIsDeleteAdministratorDialogOpen] = useState(false)
+  // 관리자 삭제 관련 상태
   const [administratorToDelete, setAdministratorToDelete] = useState<Administrator | null>(null)
-  const [isDeletingAdministrator, setIsDeletingAdministrator] = useState(false)
 
-  // 회차 삭제 다이얼로그 관련 상태
-  const [isDeleteRoundDialogOpen, setIsDeleteRoundDialogOpen] = useState(false)
+  // 회차 삭제 관련 상태
   const [roundToDelete, setRoundToDelete] = useState<Round | null>(null)
-  const [isDeletingRound, setIsDeletingRound] = useState(false)
 
   // 건물 타입에 따른 슬롯 입력 필드 표시 여부 결정
   const [showFridgeSlots, setShowFridgeSlots] = useState(false)
@@ -113,17 +114,12 @@ export default function Settings() {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(false)
   const [businessError, setBusinessError] = useState<string | null>(null)
-  const [isBusinessDialogOpen, setIsBusinessDialogOpen] = useState(false)
   const [businessName, setBusinessName] = useState("")
-  const [isDeleteBusinessDialogOpen, setIsDeleteBusinessDialogOpen] = useState(false)
   const [businessToDelete, setBusinessToDelete] = useState<Business | null>(null)
-  const [isDeletingBusiness, setIsDeletingBusiness] = useState(false)
 
-  // 작업 완료 알림을 위한 상태 추가
-  const [actionMessage, setActionMessage] = useState<{
-    type: "success" | "error" | "info"
-    message: string
-  } | null>(null)
+  // 오류
+  const [defaultAmountError, setDefaultAmountError] = useState<string | null>(null);
+  const [googleSheetIdError, setGoogleSheetIdError] = useState<string | null>(null);
 
   const handleDefaultAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setDefaultAmount(e.target.value)
@@ -135,35 +131,7 @@ export default function Settings() {
     setStorageValue("google_sheet_id", e.target.value)
   }, [])
 
-  useEffect(() => {
-    if (!saveSuccess) return
-
-    const timeout = setTimeout(() => setSaveSuccess(false), 3000)
-    return () => clearTimeout(timeout) // 기존 타이머 정리
-  }, [saveSuccess])
-
-  useEffect(() => {
-    if (!exportSuccess) return
-
-    const timeout = setTimeout(() => setExportSuccess(false), 3000)
-    return () => clearTimeout(timeout) // 기존 타이머 정리
-  }, [exportSuccess])
-
-  // actionMessage 자동 제거
-  useEffect(() => {
-    if (!actionMessage) return
-
-    // info 타입은 자동으로 닫히지 않도록 함
-    if (actionMessage.type === "info") return
-
-    const timeout = setTimeout(() => setActionMessage(null), actionMessage.type === "error" ? 60000 : 3000)
-
-    return () => clearTimeout(timeout)
-  }, [actionMessage])
-
-  // 기본 납부 금액 가져오기 및 구글 시트 ID 가져오기 부분 수정
-  // 이 useEffect를 다음과 같이 수정합니다:
-
+  // 기본 납부 금액 가져오기 및 구글 시트 ID 가져오기
   useEffect(() => {
     // 일반 탭일 때만 기본 납부 금액과 구글 시트 ID를 가져옴
     if (activeTab === "general") {
@@ -177,6 +145,7 @@ export default function Settings() {
           setDefaultAmount("7000")
         }
       }
+      setDefaultAmountError(null)
 
       // 서약서 구글 시트 ID 가져오기
       const fetchGoogleSheetId = async () => {
@@ -193,6 +162,7 @@ export default function Settings() {
           setGoogleSheetId("")
         }
       }
+      setGoogleSheetIdError(null)
 
       fetchDefaultAmount()
       fetchGoogleSheetId()
@@ -219,7 +189,7 @@ export default function Settings() {
     }
   }, [activeTab])
 
-  // 건물 목록 가져오기 함수 수정
+  // 건물 목록 가져오기
   const fetchBuildings = async () => {
     setIsLoadingBuildings(true)
     setBuildingError(null)
@@ -236,7 +206,7 @@ export default function Settings() {
     }
   }
 
-  // 관리자 목록 가져오기 함수 수정
+  // 관리자 목록 가져오기
   const fetchAdministrators = async () => {
     setIsLoadingAdministrators(true)
     setAdministratorError(null)
@@ -253,7 +223,7 @@ export default function Settings() {
     }
   }
 
-  // 회차 목록 가져오기 함수 수정
+  // 회차 목록 가져오기
   const fetchRounds = async () => {
     setIsLoadingRounds(true)
     setRoundError(null)
@@ -275,10 +245,9 @@ export default function Settings() {
     }
   }
 
-  // 관리자 역할 목록 가져오기 함수 수정
+  // 관리자 역할 목록 가져오기
   const fetchAdminRoles = async () => {
     try {
-      // API 호출
       const data = await get<AdminRole[]>(API_PATHS.ADMINS_ROLES)
       setAdminRoles(data || [])
 
@@ -288,7 +257,6 @@ export default function Settings() {
       }
     } catch (error) {
       console.error("Error fetching admin roles:", error)
-      // Keep the default admin roles if there's an error
     }
   }
 
@@ -309,13 +277,8 @@ export default function Settings() {
       const formattedDate = kstDate.toISOString().replace("T", "_").replace(/:/g, "-").split(".")[0];
 
       downloadCSV(csvContent, `${fileNamePrefix}_목록_${formattedDate}.csv`);
-      setExportSuccess(true)
     } catch (error) {
-      console.error("CSV 내보내기 중 오류 발생:", error)
-      setActionMessage({
-        type: "error",
-        message: `CSV 내보내기 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
+      handleError(error, "CSV 내보내기")
     } finally {
       setIsExporting(false)
     }
@@ -331,21 +294,87 @@ export default function Settings() {
     exportCSVData<Consent>(API_PATHS.SURVEY, "consents", "서약서", setIsExportingConsents)
   }
 
+  // 초기화 다이얼로그 열기
+  const openResetDialog = (type: "payers" | "consents" | "fridge") => {
+    setResetType(type)
+    setResetConfirmCount(0)
+    if (type === "payers") {
+      setIsDialogOpen(true);
+      setDialogType("deleteAllPayers");
+    } else if (type === "consents") {
+      setIsDialogOpen(true);
+      setDialogType("deleteAllConsents");
+    } else {
+      setIsDialogOpen(true);
+      setDialogType("deleteAllFridge");
+    }
+  }
+
+  // 초기화 확인 버튼 클릭 처리
+  const handleResetConfirm = async () => {
+    if (resetConfirmCount < 2) {
+      // 아직 3번 클릭하지 않았으면 카운트 증가
+      setResetConfirmCount(resetConfirmCount + 1)
+      return
+    }
+
+    // 3번 클릭했으면 초기화 실행
+    setIsSubmitting(true)
+
+    try {
+      let endpoint
+      let successMessage
+
+      if (resetType === "payers") {
+        endpoint = API_PATHS.PAYMENT
+        successMessage = "납부자 목록이 성공적으로 초기화되었습니다."
+      } else if (resetType === "consents") {
+        endpoint = API_PATHS.SURVEY
+        successMessage = "서약서 목록이 성공적으로 초기화되었습니다."
+      } else {
+        endpoint = API_PATHS.FRIDGE
+        successMessage = "냉장고 신청 목록이 성공적으로 초기화되었습니다."
+      }
+
+      await del(endpoint)
+
+      handleSuccess(successMessage)
+    } catch (error: unknown) {
+      handleError(error, "초기화")
+    } finally {
+      // 다이얼로그 닫기
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
+
+      setResetConfirmCount(0)
+      setResetType(null)
+    }
+  }
+
   /**
    * 저장 - 일반, 건물, 관리자, 회차, 사업
    */
     // 일반 탭 - 기본 납부 금액, 구글 시트 ID 저장
   const handleGeneralSave = async () => {
-      // 기본 납부 금액 검증
+      // 입력 검증
       if (!default_amount || Number.parseInt(default_amount) <= 0) {
-        setActionMessage({
-          type: "error",
-          message: "유효한 기본 납부 금액을 입력해주세요.",
-        })
+        setDefaultAmountError("금액을 입력하여주세요.")
+      } else {
+        setDefaultAmountError(null)
+      }
+
+      if (google_sheet_id.trim() === "") {
+        setGoogleSheetIdError("시트 ID를 입력하여주세요.")
+      } else {
+        setGoogleSheetIdError(null)
+      }
+
+      if (defaultAmountError || googleSheetIdError) {
         return
       }
 
-      setIsSaving(true)
+      setIsSubmitting(true)
 
       try {
         // 기본 납부 금액 저장
@@ -356,19 +385,13 @@ export default function Settings() {
           await post(API_PATHS.CONFIG_GOOGLE_SHEET_ID, google_sheet_id.trim())
         }
 
-        setSaveSuccess(true)
-        setActionMessage({
-          type: "success",
-          message: "성공적으로 저장되었습니다.",
-        })
+        handleSuccess("성공적으로 반영되었습니다.")
       } catch (error) {
-        console.error("Error saving settings:", error)
-        setActionMessage({
-          type: "error",
-          message: `설정 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-        })
+        handleError(error, "설정 저장")
       } finally {
-        setIsSaving(false)
+        setIsDialogOpen(false)
+        setDialogType(null)
+        setIsSubmitting(false)
       }
     }
 
@@ -382,21 +405,18 @@ export default function Settings() {
     setBuildingFridgeSlots("0")
     setBuildingFreezerSlots("0")
     setBuildingIntegratedSlots("0")
-    setIsBuildingDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("addBuilding");
   }
 
   // 건물 저장 (추가 또는 수정)
   const handleSaveBuilding = async () => {
     // 입력 검증
     if (!buildingName.trim()) {
-      setActionMessage({
-        type: "error",
-        message: "건물 이름을 입력해주세요.",
-      })
       return
     }
 
-    setIsSaving(true)
+    setIsSubmitting(true)
 
     try {
       const fridgeSlots = Number.parseInt(buildingFridgeSlots)
@@ -426,100 +446,13 @@ export default function Settings() {
       // 성공 시 목록 다시 불러오기
       await fetchBuildings()
 
-      // 다이얼로그 닫기
-      setIsBuildingDialogOpen(false)
-      setActionMessage({
-        type: "success",
-        message: "건물이 성공적으로 저장되었습니다.",
-      })
+      handleSuccess("성공적으로 반영되었습니다.")
     } catch (error) {
-      console.error("Error saving building:", error)
-      setActionMessage({
-        type: "error",
-        message: `건물 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      // 오류 발생 시 다이얼로그 닫기
-      setIsBuildingDialogOpen(false)
+      handleError(error, "건물 추가(수정)")
     } finally {
-      setIsSaving(false)
-    }
-  }
-
-  // 초기화 다이얼로그 열기
-  const openResetDialog = (type: "payers" | "consents" | "fridge") => {
-    setResetType(type)
-    setResetConfirmCount(0)
-    if (type === "payers") {
-      setIsResetPayersDialogOpen(true)
-    } else if (type === "consents") {
-      setIsResetConsentsDialogOpen(true)
-    } else {
-      setIsResetFridgeDialogOpen(true)
-    }
-  }
-
-  // 초기화 확인 버튼 클릭 처리
-  const handleResetConfirm = async () => {
-    if (resetConfirmCount < 2) {
-      // 아직 3번 클릭하지 않았으면 카운트 증가
-      setResetConfirmCount(resetConfirmCount + 1)
-      return
-    }
-
-    // 3번 클릭했으면 초기화 실행
-    setIsResetting(true)
-
-    try {
-      let endpoint
-      let successMessage
-
-      if (resetType === "payers") {
-        endpoint = API_PATHS.PAYMENT
-        successMessage = "납부자 목록이 성공적으로 초기화되었습니다."
-      } else if (resetType === "consents") {
-        endpoint = API_PATHS.SURVEY
-        successMessage = "서약서 목록이 성공적으로 초기화되었습니다."
-      } else {
-        endpoint = API_PATHS.FRIDGE
-        successMessage = "냉장고 신청 목록이 성공적으로 초기화되었습니다."
-      }
-
-      // 환경에 상관없이 del 함수 호출
-      await del(endpoint)
-
-      // 성공 메시지 표시
-      setActionMessage({
-        type: "success",
-        message: successMessage,
-      })
-
-      // 다이얼로그 닫기
-      if (resetType === "payers") {
-        setIsResetPayersDialogOpen(false)
-      } else if (resetType === "consents") {
-        setIsResetConsentsDialogOpen(false)
-      } else {
-        setIsResetFridgeDialogOpen(false)
-      }
-    } catch (error: unknown) {
-      console.error("초기화 중 오류 발생:", error)
-      setActionMessage({
-        type: "error",
-        message: `초기화 중 오류가 발생했습니다: ${error instanceof Error ? error.message : "알 수 없는 오류"}`,
-      })
-
-      // 오류 발생 시에도 다이얼로그 닫기
-      if (resetType === "payers") {
-        setIsResetPayersDialogOpen(false)
-      } else if (resetType === "consents") {
-        setIsResetConsentsDialogOpen(false)
-      } else {
-        setIsResetFridgeDialogOpen(false)
-      }
-    } finally {
-      setIsResetting(false)
-      setResetConfirmCount(0)
-      setResetType(null)
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
     }
   }
 
@@ -531,7 +464,8 @@ export default function Settings() {
     setRoundStartDate("")
     setRoundEndDate("")
     setRoundPassword("") // 비밀번호 초기화
-    setIsRoundDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("addRound");
   }
 
   // 회차 수정 버튼 클릭
@@ -542,7 +476,8 @@ export default function Settings() {
     setRoundStartDate(round.startDate || "")
     setRoundEndDate(round.endDate || "")
     setRoundPassword(round.password || "")
-    setIsRoundDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("addRound");
   }
 
   // 건물 수정 버튼 클릭
@@ -554,19 +489,22 @@ export default function Settings() {
     setBuildingFridgeSlots(building.fridgeSlots?.toString() || "0")
     setBuildingFreezerSlots(building.freezerSlots?.toString() || "0")
     setBuildingIntegratedSlots(building.integratedSlots?.toString() || "0")
-    setIsBuildingDialogOpen(true)
+    setIsDialogOpen(true)
+    setDialogType("addBuilding")
   }
 
   // 건물 삭제 버튼 클릭
   const handleDeleteBuilding = (building: Building) => {
     setBuildingToDelete(building)
-    setIsDeleteBuildingDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("deleteBuilding");
   }
 
   // 회차 삭제 버튼 클릭
   const handleDeleteRound = (round: Round) => {
     setRoundToDelete(round)
-    setIsDeleteRoundDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("deleteRound");
   }
 
   // 관리자 수정 버튼 클릭
@@ -576,10 +514,11 @@ export default function Settings() {
     setAdministratorEmail(administrator.email || "")
     setAdministratorName(administrator.name || "")
     setAdministratorRole(administrator.role || "")
-    setIsAdministratorDialogOpen(true)
+    setIsDialogOpen(true)
+    setDialogType("addAdministrator")
   }
 
-  // 관리자 추가 버튼 클릭 함수 수정
+  // 관리자 추가 버튼 클릭
   const handleAddAdministrator = () => {
     setIsEditAdminMode(false)
     setCurrentAdministrator(null)
@@ -587,43 +526,38 @@ export default function Settings() {
     setAdministratorName("")
     // 첫 번째 역할 선택 (기본값)
     setAdministratorRole(adminRoles.length > 0 ? adminRoles[0].key : "")
-    setIsAdministratorDialogOpen(true)
+    setIsDialogOpen(true)
+    setDialogType("addAdministrator")
   }
 
   // 관리자 삭제 버튼 클릭
   const handleDeleteAdministrator = (administrator: Administrator) => {
     setAdministratorToDelete(administrator)
-    setIsDeleteAdministratorDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("deleteAdministrator");
   }
 
   // 건물 삭제 확인
   const confirmDeleteBuilding = async () => {
     if (!buildingToDelete) return
 
-    setIsDeletingBuilding(true)
+    setIsSubmitting(true)
 
     try {
-      // 환경에 상없이 del 함수 호출
       await del(API_PATHS.BUILDING_BY_ID(buildingToDelete.id))
 
       // 성공 시 목록 다시 불러오기
       await fetchBuildings()
 
-      // 다이얼로그 닫기
-      setIsDeleteBuildingDialogOpen(false)
-      setBuildingToDelete(null)
-      setActionMessage({
-        type: "success",
-        message: "건물이 성공적으로 삭제되었습니다.",
-      })
+      handleSuccess("성공적으로 삭제되었습니다.")
     } catch (error) {
-      console.error("Error deleting building:", error)
-      setActionMessage({
-        type: "error",
-        message: `건물 삭제 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
+      handleError(error, "건물 삭제")
     } finally {
-      setIsDeletingBuilding(false)
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
+
+      setBuildingToDelete(null)
     }
   }
 
@@ -631,7 +565,7 @@ export default function Settings() {
   const confirmDeleteRound = async () => {
     if (!roundToDelete) return
 
-    setIsDeletingRound(true)
+    setIsSubmitting(true)
 
     try {
       // 환경에 상관없이 del 함수 호출
@@ -640,29 +574,22 @@ export default function Settings() {
       // 성공 시 목록 다시 불러오기
       await fetchRounds()
 
-      // 다이얼로그 닫기
-      setIsDeleteRoundDialogOpen(false)
       setRoundToDelete(null)
-      setActionMessage({
-        type: "success",
-        message: "회차가 성공적으로 삭제되었습니다.",
-      })
+      handleSuccess("성공적으로 삭제되었습니다.")
     } catch (error) {
-      console.error("Error deleting round:", error)
-      setActionMessage({
-        type: "error",
-        message: `회차 삭제 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
+      handleError(error, "회차 삭제")
     } finally {
-      setIsDeletingRound(false)
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
     }
   }
 
-  // 관리자 삭제 확인 함수 수정
+  // 관리자 삭제 확인
   const confirmDeleteAdministrator = async () => {
     if (!administratorToDelete || administratorToDelete.id === undefined) return
 
-    setIsDeletingAdministrator(true)
+    setIsSubmitting(true)
 
     try {
       // 환경에 상관없이 del 함수 호출
@@ -670,74 +597,30 @@ export default function Settings() {
 
       // 성공 시 목록 다시 불러오기
       setAdministrators((prevAdmins) => prevAdmins.filter((a) => a.id !== administratorToDelete.id))
-      setActionMessage({
-        type: "success",
-        message: "관리자가 성공적으로 삭제되었습니다.",
-      })
+      handleSuccess("성공적으로 삭제되었습니다.")
     } catch (error) {
-      console.error("Error deleting administrator:", error)
-      setActionMessage({
-        type: "error",
-        message: `관리자 삭제 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
+      handleError(error, "관리자 삭제")
     } finally {
-      setIsDeletingAdministrator(false)
-    }
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
 
-    // 다이얼로그 닫기
-    setIsDeleteAdministratorDialogOpen(false)
-    setAdministratorToDelete(null)
+      setAdministratorToDelete(null)
+    }
   }
 
   // 회차 저장 (추가 또는 수정)
   const handleSaveRound = async () => {
     // 입력 검증
-    if (!roundName.trim()) {
-      setActionMessage({
-        type: "error",
-        message: "회차 이름을 입력해주세요.",
-      })
+    if (!roundName.trim() || !roundStartDate || !roundEndDate || !roundPassword || roundPassword.trim() === "" || new Date(roundStartDate) > new Date(roundEndDate)) {
       return
     }
 
-    if (!roundStartDate) {
-      setActionMessage({
-        type: "error",
-        message: "시작일을 입력해주세요.",
-      })
-      return
-    }
-
-    if (!roundEndDate) {
-      setActionMessage({
-        type: "error",
-        message: "종료일을 입력해주세요.",
-      })
-      return
-    }
-
-    if (!roundPassword || roundPassword.trim() === "") {
-      setActionMessage({
-        type: "error",
-        message: "비밀번호를 입력해주세요.",
-      })
-      return
-    }
-
-    // 시작일이 종료일보다 이후인지 확인
-    if (new Date(roundStartDate) > new Date(roundEndDate)) {
-      setActionMessage({
-        type: "error",
-        message: "시작일은 종료일보다 이전이어야 합니다.",
-      })
-      return
-    }
-
-    setIsSaving(true)
+    setIsSubmitting(true)
 
     try {
+      // 수정 모드 - PUT 요청
       if (isEditRoundMode && currentRound) {
-        // roun variable was undeclared.
         await put(API_PATHS.ROUNDS_BY_ID(currentRound.id), {
           name: roundName,
           startDate: roundStartDate,
@@ -757,55 +640,25 @@ export default function Settings() {
       // 성공 시 목록 다시 불러오기
       await fetchRounds()
 
-      // 다이얼로그 닫기
-      setIsRoundDialogOpen(false)
-      setActionMessage({
-        type: "success",
-        message: "회차가 성공적으로 저장되었습니다.",
-      })
+      handleSuccess("성공적으로 반영되었습니다.")
     } catch (error) {
-      console.error("Error saving round:", error)
-      setActionMessage({
-        type: "error",
-        message: `회차 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      // 오류 발생 시 다이얼로그 닫기
-      setIsRoundDialogOpen(false)
+      handleError(error, "회차 추가(수정)")
     } finally {
-      setIsSaving(false)
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
     }
   }
 
   // 관리자 저장 함수 수정
   const handleSaveAdministrator = async () => {
     // 입력 검증
-    if (!administratorEmail.trim()) {
-      setActionMessage({
-        type: "error",
-        message: "이메일을 입력해주세요.",
-      })
-      return
-    }
-
-    if (!administratorName.trim()) {
-      setActionMessage({
-        type: "error",
-        message: "이름을 입력해주세요.",
-      })
-      return
-    }
-
-    // 이메일 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(administratorEmail)) {
-      setActionMessage({
-        type: "error",
-        message: "유효한 이메일 주소를 입력해주세요.",
-      })
+    if (!administratorEmail.trim() || !administratorName.trim() || !emailRegex.test(administratorEmail)) {
       return
     }
 
-    setIsSaving(true)
+    setIsSubmitting(true)
 
     try {
       if (isEditAdminMode && currentAdministrator && currentAdministrator.id !== undefined) {
@@ -824,25 +677,16 @@ export default function Settings() {
         })
       }
 
-      // 다이얼로그 닫기
-      setIsAdministratorDialogOpen(false)
-
       // 성공 시 목록 다시 불러오기
       await fetchAdministrators()
-      setActionMessage({
-        type: "success",
-        message: "관리자가 성공적으로 저장되었습니다.",
-      })
+
+      handleSuccess("성공적으로 반영되었습니다.")
     } catch (error) {
-      console.error("Error saving administrator:", error)
-      setActionMessage({
-        type: "error",
-        message: `관리자 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      // 오류 발생 시 다이얼로그 닫기
-      setIsAdministratorDialogOpen(false)
+      handleError(error, "관리자 추가")
     } finally {
-      setIsSaving(false)
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
     }
   }
 
@@ -888,10 +732,10 @@ export default function Settings() {
   useEffect(() => {
     setShowFridgeSlots(buildingType === "REFRIGERATOR" || buildingType === "ALL")
     setShowFreezerSlots(buildingType === "FREEZER" || buildingType === "ALL")
-    setShowIntegratedSlots(buildingType === "COMBINED" || buildingType === "ALL")
+    setShowIntegratedSlots(buildingType === "COMBINED")
   }, [buildingType])
 
-  // useEffect 내에서 API를 통해 역할 목록을 가져오는 코드 추가
+  // useEffect 내에서 API를 통해 역할 목록을 가져오는 코드
   useEffect(() => {
     const fetchRoles = async () => {
       try {
@@ -905,13 +749,13 @@ export default function Settings() {
     fetchRoles()
   }, [])
 
-  // getRoleTitleByKey 함수 추가
+  // getRoleTitleByKey
   const getRoleTitleByKey = (key: string, adminRoles: AdminRole[]): string => {
     const role = adminRoles.find((role) => role.key === key)
     return role ? role.title : key
   }
 
-  // 사업 목록 가져오기 함수
+  // 사업 목록 가져오기
   const fetchBusinesses = async () => {
     setIsLoadingBusinesses(true)
     setBusinessError(null)
@@ -931,59 +775,47 @@ export default function Settings() {
   // 사업 추가 버튼 클릭
   const handleAddBusiness = () => {
     setBusinessName("")
-    setIsBusinessDialogOpen(true)
+    setIsDialogOpen(true);
+    setDialogType("addBusiness");
   }
 
   // 사업 저장
   const handleSaveBusiness = async () => {
     // 입력 검증
     if (!businessName.trim()) {
-      setActionMessage({
-        type: "error",
-        message: "사업 이름을 입력해주세요.",
-      })
       return
     }
 
-    setIsSaving(true)
+    setIsSubmitting(true)
 
     try {
-      // 추가 모드 - POST 요청 (사업 이름만 문자열로 전송)
-      await post(API_PATHS.BUSINESS, businessName)
+      await post(API_PATHS.BUSINESS, {name: businessName})
 
       // 성공 시 목록 다시 불러오기
       await fetchBusinesses()
 
-      // 다이얼로그 닫기
-      setIsBusinessDialogOpen(false)
-      setActionMessage({
-        type: "success",
-        message: "사업이 성공적으로 저장되었습니다.",
-      })
+      handleSuccess("성공적으로 반영되었습니다.")
     } catch (error) {
-      console.error("Error saving business:", error)
-      setActionMessage({
-        type: "error",
-        message: `사업 저장 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
-      // 오류 발생 시 다이얼로그 닫기
-      setIsBusinessDialogOpen(false)
+      handleError(error, "사업 추가")
     } finally {
-      setIsSaving(false)
+      setIsSubmitting(false)
+      setDialogType(null)
+      setIsDialogOpen(false)
     }
   }
 
   // 사업 삭제 버튼 클릭
   const handleDeleteBusiness = (business: Business) => {
     setBusinessToDelete(business)
-    setIsDeleteBusinessDialogOpen(true)
+    setIsDialogOpen(true)
+    setDialogType("deleteBusiness")
   }
 
   // 사업 삭제 확인
   const confirmDeleteBusiness = async () => {
     if (!businessToDelete) return
 
-    setIsDeletingBusiness(true)
+    setIsSubmitting(true)
 
     try {
       // 환경에 상관없이 del 함수 호출
@@ -992,61 +824,20 @@ export default function Settings() {
       // 성공 시 목록 다시 불러오기
       await fetchBusinesses()
 
-      // 다이얼로그 닫기
-      setIsDeleteBusinessDialogOpen(false)
-      setBusinessToDelete(null)
-      setActionMessage({
-        type: "success",
-        message: "사업이 성공적으로 삭제되었습니다.",
-      })
+      handleSuccess("성공적으로 삭제되었습니다.")
     } catch (error) {
-      console.error("Error deleting business:", error)
-      setActionMessage({
-        type: "error",
-        message: `사업 삭제 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
-      })
+      handleError(error, "사업 삭제")
     } finally {
-      setIsDeletingBusiness(false)
+      setIsDialogOpen(false)
+      setDialogType(null)
+      setIsSubmitting(false)
+
+      setBusinessToDelete(null)
     }
   }
 
   return (
     <>
-      {actionMessage && (
-        <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-md transition-opacity duration-300 overflow-hidden ${
-            actionMessage.type === "success"
-              ? "bg-green-100 text-green-800 border border-green-200"
-              : actionMessage.type === "info"
-                ? "bg-blue-100 text-blue-800 border border-blue-200"
-                : "bg-red-100 text-red-800 border border-red-200"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            {actionMessage.type === "info" && (
-              <div className="flex items-center">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                <span>{actionMessage.message}</span>
-              </div>
-            )}
-            {actionMessage.type !== "info" && <span>{actionMessage.message}</span>}
-            <button onClick={() => setActionMessage(null)} className="ml-4 text-gray-500 hover:text-gray-700">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          {actionMessage.type !== "info" && (
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200 mt-2">
-              <div
-                className={`h-full ${
-                  actionMessage.type === "success"
-                    ? "bg-green-500 animate-shrink-left-success"
-                    : "bg-red-500 animate-shrink-left-error"
-                }`}
-              ></div>
-            </div>
-          )}
-        </div>
-      )}
       <div className="max-w-3xl mx-auto">
         {/* 제목 부분에 md:block hidden 클래스 추가하여 모바일에서 숨기기 */}
         <h1 className="text-2xl font-semibold mb-4 md:block hidden">설정</h1>
@@ -1072,7 +863,7 @@ export default function Settings() {
                     type="number"
                     value={default_amount || ""}
                     onChange={handleDefaultAmountChange}
-                    className="w-2/3"
+                    className={defaultAmountError ? "border-red-500" : ""}
                   />
                 </div>
 
@@ -1086,10 +877,167 @@ export default function Settings() {
                     placeholder="예: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
                     value={google_sheet_id || ""}
                     onChange={handleGoogleSheetIdChange}
-                    className="w-2/3"
+                    className={googleSheetIdError ? "border-red-500" : ""}
                     autoComplete="off"
                   />
                 </div>
+
+                <details>
+                  <summary className="cursor-pointer text-sm">서약서 양식 안내</summary>
+                  <p className="mb-2">
+                    통합관리시스템에서 서약서 구글 시트 데이터를 불러오려면 아래 양식을 반드시 준수해야 합니다.{" "}
+                    <br></br> (그냥 작년 거 쓰면 됩니다. 밑으로 내려서{" "}
+                    <a href="#2" className="text-blue-600 hover:underline">
+                      2번 권한 추가
+                    </a>
+                    랑{" "}
+                    <a href="#3" className="text-blue-600 hover:underline">
+                      3번 시트 ID 저장
+                    </a>
+                    만 보고 설정해주세요.)
+                  </p>
+
+                  <div className="mb-2 border rounded-md p-2 bg-gray-50">
+                    <img src="/img/img1.png" alt="응답 시트 위치" className="block w-[40%]"/>
+                  </div>
+
+                  <p className="mb-2">1번째에 응답 시트가 위치해야 합니다.</p>
+                  <p className="font-semibold">필수 항목 (1~6열)</p>
+                  <table className="w-full border-collapse mb-4">
+                    <thead>
+                    <tr className="bg-muted/50">
+                      <th className="border p-1 text-xs text-center">열 번호</th>
+                      <th className="border p-1 text-xs text-center">항목</th>
+                      <th className="border p-1 text-xs text-center">형식 예시</th>
+                      <th className="border p-1 text-xs text-center">비고</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                      <td className="border p-1 text-xs text-center">1</td>
+                      <td className="border p-1 text-xs text-center">타임스탬프</td>
+                      <td className="border p-1 text-xs text-center">2025. 1. 1 오전 12:30:01</td>
+                      <td className="border p-1 text-xs text-center">설문지-시트 연결 시 자동 생성</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-1 text-xs text-center">2</td>
+                      <td className="border p-1 text-xs text-center">학번</td>
+                      <td className="border p-1 text-xs text-center">
+                        202512345 (내국인)<br></br>2025ABC123 (외국인)
+                      </td>
+                      <td className="border p-1 text-xs text-center"></td>
+                    </tr>
+                    <tr>
+                      <td className="border p-1 text-xs text-center">3</td>
+                      <td className="border p-1 text-xs text-center">이름</td>
+                      <td className="border p-1 text-xs text-center">김유연</td>
+                      <td className="border p-1 text-xs text-center"></td>
+                    </tr>
+                    <tr>
+                      <td className="border p-1 text-xs text-center">4</td>
+                      <td className="border p-1 text-xs text-center">전화번호</td>
+                      <td className="border p-1 text-xs text-center">
+                        010-XXXX-YYYY<br></br>010XXXXYYYY
+                      </td>
+                      <td className="border p-1 text-xs text-center"></td>
+                    </tr>
+                    <tr>
+                      <td className="border p-1 text-xs text-center">5</td>
+                      <td className="border p-1 text-xs text-center">건물</td>
+                      <td className="border p-1 text-xs text-center">이룸관(여)</td>
+                      <td className="border p-1 text-xs text-center">
+                        시스템 설정의 건물 목록의 이름과 정확히 일치해야 함
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border p-1 text-xs text-center">6</td>
+                      <td className="border p-1 text-xs text-center">거주호실</td>
+                      <td className="border p-1 text-xs text-center">
+                        234<br></br>234호
+                      </td>
+                      <td className="border p-1 text-xs text-center"></td>
+                    </tr>
+                    </tbody>
+                  </table>
+                  <p className="text-xs mb-1">✅ 1~6열의 항목과 순서는 반드시 지켜야 합니다.</p>
+                  <p className="text-xs mb-2">
+                    ✅ 항목 이름은 변경 가능하지만 의미는 유지해야 합니다. 예) '학번' → '학번 (Student Number)' 변경
+                    가능
+                  </p>
+
+                  <p className="font-semibold">선택 항목 (7열~Z열)</p>
+                  <p className="text-xs mb-1">7열부터 추가적인 동의 항목을 설정할 수 있습니다.</p>
+                  <p className="text-xs mb-2">
+                    '동의하지 않습니다' 텍스트가 포함된 응답이 하나라도 있으면 미동의로 간주합니다.
+                  </p>
+
+                  <p className="text-xs font-semibold mt-2">✅ 동의 여부 처리 기준</p>
+                  <p className="text-xs">예시 1 (미동의 처리)</p>
+                  <p className="text-xs text-muted-foreground">
+                    2025. 1. 1 오전 12:30:01 | 202512648 | 홍길동 | 010-1234-5678 | 새롬(여) | 123 | 동의합니다. |
+                    동의하지 않습니다. | 이해합니다. | 추가 의견
+                  </p>
+                  <p className="text-xs">➡ '동의하지 않습니다'가 포함되었으므로 미동의 처리</p>
+
+                  <p className="text-xs">예시 2 (동의 처리)</p>
+                  <p className="text-xs text-muted-foreground">
+                    2025. 1. 1 오전 12:30:01 | 202512648 | 홍길동 | 010-1234-5678 | 새롬(여) | 123 | 추가 의견 |
+                    동의합니다. | 이해합니다. | 추가 의견222
+                  </p>
+                  <p className="text-xs">➡ '동의하지 않습니다'가 포함되지 않았으므로 동의 처리</p>
+
+                  <p className="mb-2 font-semibold text-base mt-4" id="2">
+                    2. 불러오기 권한 추가
+                  </p>
+
+                  <div className="mb-2 border rounded-md p-2 bg-gray-50">
+                    <img src="/img/img2.png" alt="구글 시트 공유 버튼" className="block w-[25%]"/>
+                  </div>
+                  <p className="text-xs mb-2">구글 시트 우측 상단의 "공유" 버튼을 클릭합니다.</p>
+
+                  <div className="mb-2 border rounded-md p-2 bg-gray-50">
+                    <img src="/img/img3.png" alt="이메일 입력" className="block w-[50%]"/>
+                  </div>
+                  <p className="text-xs mb-2">사용자 입력란에 아래 이메일을 복사하여 붙여넣기합니다.</p>
+
+                  <div className="flex items-center mb-2 bg-gray-100 p-2 rounded-md">
+                    <code className="text-xs flex-1 break-all">
+                      knu-dorm-management-system@knu-dorm-management-system.iam.gserviceaccount.com
+                    </code>
+                    <button
+                      className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          "knu-dorm-management-system@knu-dorm-management-system.iam.gserviceaccount.com",
+                        )
+                        alert("이메일이 클립보드에 복사되었습니다.")
+                      }}
+                    >
+                      복사
+                    </button>
+                  </div>
+
+                  <div className="mb-2 border rounded-md p-2 bg-gray-50">
+                    <img src="/img/img4.png" alt="권한 설정" className="block w-[50%]"/>
+                  </div>
+                  <p className="text-xs mb-4">권한을 "뷰어"로 변경 후 "전송" 버튼을 클릭합니다.</p>
+
+                  <p className="mb-2 font-semibold text-base" id="3">
+                    3. 시트 ID 저장
+                  </p>
+
+                  <div className="mb-2 border rounded-md p-2 bg-gray-50">
+                    <img src="/img/img5.png" alt="시트 ID 복사" className="block w-[100%]"/>
+                  </div>
+                  <p className="text-xs mb-2">
+                    설문지와 연결된 구글 시트의 링크에서 위 사진과 같이 시트ID를 복사합니다.
+                  </p>
+
+                  <div className="mb-2 border rounded-md p-2 bg-gray-50">
+                    <img src="/img/img6.png" alt="시트 ID 저장" className="block w-[100%]"/>
+                  </div>
+                  <p className="text-xs mb-4">설정에서 복사한 ID를 붙여놓고 설정을 저장합니다.</p>
+                </details>
 
                 <div className="pt-6 space-y-3">
                   <Button
@@ -1100,12 +1048,12 @@ export default function Settings() {
                   >
                     {isExportingPayers ? (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                         내보내는 중...
                       </>
                     ) : (
                       <>
-                        <FileExport className="mr-2 h-4 w-4" />
+                        <FileExport className="mr-2 h-4 w-4"/>
                         납부자 목록 CSV 내보내기
                       </>
                     )}
@@ -1119,12 +1067,12 @@ export default function Settings() {
                   >
                     {isExportingConsents ? (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                         내보내는 중...
                       </>
                     ) : (
                       <>
-                        <FileExport className="mr-2 h-4 w-4" />
+                        <FileExport className="mr-2 h-4 w-4"/>
                         서약서 목록 CSV 내보내기
                       </>
                     )}
@@ -1135,7 +1083,7 @@ export default function Settings() {
                     className="w-full text-red-500 border-red-200 hover:bg-red-50"
                     onClick={() => openResetDialog("payers")}
                   >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <AlertTriangle className="mr-2 h-4 w-4"/>
                     납부자 목록 초기화
                   </Button>
 
@@ -1144,7 +1092,7 @@ export default function Settings() {
                     className="w-full text-red-500 border-red-200 hover:bg-red-50"
                     onClick={() => openResetDialog("consents")}
                   >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <AlertTriangle className="mr-2 h-4 w-4"/>
                     서약서 목록 초기화
                   </Button>
 
@@ -1153,16 +1101,16 @@ export default function Settings() {
                     className="w-full text-red-500 border-red-200 hover:bg-red-50"
                     onClick={() => openResetDialog("fridge")}
                   >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    <AlertTriangle className="mr-2 h-4 w-4"/>
                     냉장고 신청 목록 초기화
                   </Button>
                 </div>
 
                 <div className="px-4 py-4 border-t">
-                  <Button className="w-full" onClick={handleGeneralSave} disabled={isSaving}>
-                    {isSaving ? (
+                  <Button className="w-full" onClick={handleGeneralSave} disabled={isSubmitting}>
+                    {isSubmitting ? (
                       <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                         저장 중...
                       </>
                     ) : (
@@ -1178,18 +1126,18 @@ export default function Settings() {
             <Card className="border bg-card text-card-foreground">
               <CardHeader className="flex flex-row items-center justify-end">
                 <Button onClick={handleAddBuilding} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4"/>
                   건물 추가
                 </Button>
               </CardHeader>
               <CardContent>
                 {isLoadingBuildings ? (
                   <div className="flex justify-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground"/>
                   </div>
                 ) : buildingError ? (
                   <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertDescription>{buildingError}</AlertDescription>
                   </Alert>
                 ) : buildings.length === 0 ? (
@@ -1233,7 +1181,7 @@ export default function Settings() {
                                       title="수정"
                                       className="h-8 px-2 text-xs"
                                     >
-                                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                                      <Pencil className="h-3.5 w-3.5 mr-1"/>
                                       수정
                                     </Button>
                                     <Button
@@ -1243,7 +1191,7 @@ export default function Settings() {
                                       title="삭제"
                                       className="h-8 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                                     >
-                                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                      <Trash2 className="h-3.5 w-3.5 mr-1"/>
                                       삭제
                                     </Button>
                                   </div>
@@ -1263,18 +1211,18 @@ export default function Settings() {
             <Card className="border bg-card text-card-foreground">
               <CardHeader className="flex flex-row items-center justify-end">
                 <Button onClick={handleAddAdministrator} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4"/>
                   관리자 추가
                 </Button>
               </CardHeader>
               <CardContent>
                 {isLoadingAdministrators ? (
                   <div className="flex justify-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground"/>
                   </div>
                 ) : administratorError ? (
                   <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertDescription>{administratorError}</AlertDescription>
                   </Alert>
                 ) : administrators.length === 0 ? (
@@ -1318,7 +1266,7 @@ export default function Settings() {
                                       title="수정"
                                       className="h-8 px-2 text-xs"
                                     >
-                                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                                      <Pencil className="h-3.5 w-3.5 mr-1"/>
                                       수정
                                     </Button>
                                     <Button
@@ -1328,7 +1276,7 @@ export default function Settings() {
                                       title="삭제"
                                       className="h-8 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                                     >
-                                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                      <Trash2 className="h-3.5 w-3.5 mr-1"/>
                                       삭제
                                     </Button>
                                   </div>
@@ -1348,18 +1296,18 @@ export default function Settings() {
             <Card className="border bg-card text-card-foreground">
               <CardHeader className="flex flex-row items-center justify-end">
                 <Button onClick={handleAddRound} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4"/>
                   회차 추가
                 </Button>
               </CardHeader>
               <CardContent>
                 {isLoadingRounds ? (
                   <div className="flex justify-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground"/>
                   </div>
                 ) : roundError ? (
                   <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertDescription>{roundError}</AlertDescription>
                   </Alert>
                 ) : rounds.length === 0 ? (
@@ -1399,7 +1347,7 @@ export default function Settings() {
                                       title="수정"
                                       className="h-8 px-2 text-xs"
                                     >
-                                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                                      <Pencil className="h-3.5 w-3.5 mr-1"/>
                                       수정
                                     </Button>
                                     <Button
@@ -1409,7 +1357,7 @@ export default function Settings() {
                                       title="삭제"
                                       className="h-8 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                                     >
-                                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                      <Trash2 className="h-3.5 w-3.5 mr-1"/>
                                       삭제
                                     </Button>
                                   </div>
@@ -1429,18 +1377,18 @@ export default function Settings() {
             <Card className="border bg-card text-card-foreground">
               <CardHeader className="flex flex-row items-center justify-end">
                 <Button onClick={handleAddBusiness} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4"/>
                   사업 추가
                 </Button>
               </CardHeader>
               <CardContent>
                 {isLoadingBusinesses ? (
                   <div className="flex justify-center py-8">
-                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground"/>
                   </div>
                 ) : businessError ? (
                   <Alert variant="destructive" className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
+                    <AlertCircle className="h-4 w-4"/>
                     <AlertDescription>{businessError}</AlertDescription>
                   </Alert>
                 ) : businesses.length === 0 ? (
@@ -1471,7 +1419,7 @@ export default function Settings() {
                                   title="삭제"
                                   className="h-8 px-2 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                  <Trash2 className="h-3.5 w-3.5 mr-1"/>
                                   삭제
                                 </Button>
                               </div>
@@ -1494,7 +1442,7 @@ export default function Settings() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-4">
                       <Label className="flex w-full items-center">
-                        홍길동 / 010-1234-5678 /<span>&nbsp;</span>
+                        이효재 / 010-8431-5880 /<span>&nbsp;</span>
                         <a
                           href="https://github.com/hyotatoFrappuccino/dormManagementSystem"
                           target="_blank"
@@ -1520,8 +1468,132 @@ export default function Settings() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* 납부자 목록 초기화 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteAllPayers"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>납부자 목록 초기화</DialogTitle>
+              <DialogDescription>
+                정말로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                <br/>
+                <br/>
+                초기화를 진행하려면 아래 "초기화" 버튼을 3번 클릭해야 합니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={handleResetConfirm} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                    초기화 중...
+                  </>
+                ) : (
+                  <>초기화 ({resetConfirmCount}/3)</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 서약서 목록 초기화 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteAllConsents"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>서약서 목록 초기화</DialogTitle>
+              <DialogDescription>
+                정말로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                <br/>
+                <br/>
+                초기화를 진행하려면 아래 "초기화" 버튼을 3번 클릭해야 합니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={handleResetConfirm} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                    초기화 중...
+                  </>
+                ) : (
+                  <>초기화 ({resetConfirmCount}/3)</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 냉장고 신청 목록 초기화 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteAllFridge"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>냉장고 신청 목록 초기화</DialogTitle>
+              <DialogDescription>
+                정말로 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                <br/>
+                <br/>
+                초기화를 진행하려면 아래 "초기화" 버튼을 3번 클릭해야 합니다.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={handleResetConfirm} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                    초기화 중...
+                  </>
+                ) : (
+                  <>초기화 ({resetConfirmCount}/3)</>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* 건물 추가/수정 다이얼로그 */}
-        <Dialog open={isBuildingDialogOpen} onOpenChange={(open) => setIsBuildingDialogOpen(open)}>
+        <Dialog open={isDialogOpen && dialogType === "addBuilding"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
           <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{isEditMode ? "건물 수정" : "건물 추가"}</DialogTitle>
@@ -1539,6 +1611,12 @@ export default function Settings() {
                 />
               </div>
 
+              <div className="grid grid-cols-1">
+                <Label htmlFor="buildingDescription" className="text-right">
+                  서약서에서 응답받는 건물 이름과 완전히 일치해야 합니다.
+                </Label>
+              </div>
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="buildingType" className="text-right">
                   건물 유형
@@ -1548,7 +1626,7 @@ export default function Settings() {
                   onValueChange={(value) => setBuildingType(value as "REFRIGERATOR" | "FREEZER" | "COMBINED" | "ALL")}
                 >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="건물 유형 선택" />
+                    <SelectValue placeholder="건물 유형 선택"/>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">냉장 + 냉동</SelectItem>
@@ -1605,13 +1683,16 @@ export default function Settings() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsBuildingDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
                 취소
               </Button>
-              <Button onClick={handleSaveBuilding} disabled={isSaving}>
-                {isSaving ? (
+              <Button onClick={handleSaveBuilding} disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                     저장 중...
                   </>
                 ) : (
@@ -1622,7 +1703,160 @@ export default function Settings() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={isRoundDialogOpen} onOpenChange={(open) => setIsRoundDialogOpen(open)}>
+        {/* 건물 삭제 확인 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteBuilding"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>건물 삭제 확인</DialogTitle>
+              <DialogDescription>정말로 이 건물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteBuilding} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                    삭제 중...
+                  </>
+                ) : (
+                  "삭제"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 관리자 추가/수정 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "addAdministrator"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{isEditAdminMode ? "관리자 수정" : "관리자 추가"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="administratorEmail" className="text-right">
+                  이메일
+                </Label>
+                <Input
+                  id="administratorEmail"
+                  type="email"
+                  value={administratorEmail || ""}
+                  onChange={(e) => setAdministratorEmail(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="administratorName" className="text-right">
+                  이름
+                </Label>
+                <Input
+                  id="administratorName"
+                  type="text"
+                  value={administratorName || ""}
+                  onChange={(e) => setAdministratorName(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="administratorRole" className="text-right">
+                  역할
+                </Label>
+                <Select value={administratorRole} onValueChange={setAdministratorRole}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="관리자 역할 선택"/>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {adminRoles.map((role) => (
+                      <SelectItem key={role.key} value={role.key}>
+                        {role.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
+                취소
+              </Button>
+              <Button onClick={handleSaveAdministrator} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                    저장 중...
+                  </>
+                ) : (
+                  "저장"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 관리자 삭제 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteAdministrator"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>관리자 삭제 확인</DialogTitle>
+              <DialogDescription>정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
+                취소
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteAdministrator} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
+                    삭제 중...
+                  </>
+                ) : (
+                  "삭제"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* 회차 추가/수정 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "addRound"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
           <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{isEditRoundMode ? "회차 수정" : "회차 추가"}</DialogTitle>
@@ -1680,13 +1914,16 @@ export default function Settings() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsRoundDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
                 취소
               </Button>
-              <Button onClick={handleSaveRound} disabled={isSaving}>
-                {isSaving ? (
+              <Button onClick={handleSaveRound} disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                     저장 중...
                   </>
                 ) : (
@@ -1697,241 +1934,38 @@ export default function Settings() {
           </DialogContent>
         </Dialog>
 
-        {/* 관리자 추가/수정 다이얼로그 */}
-        <Dialog open={isAdministratorDialogOpen} onOpenChange={(open) => setIsAdministratorDialogOpen(open)}>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{isEditAdminMode ? "관리자 수정" : "관리자 추가"}</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="administratorEmail" className="text-right">
-                  이메일
-                </Label>
-                <Input
-                  id="administratorEmail"
-                  type="email"
-                  value={administratorEmail || ""}
-                  onChange={(e) => setAdministratorEmail(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="administratorName" className="text-right">
-                  이름
-                </Label>
-                <Input
-                  id="administratorName"
-                  type="text"
-                  value={administratorName || ""}
-                  onChange={(e) => setAdministratorName(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="administratorRole" className="text-right">
-                  역할
-                </Label>
-                <Select value={administratorRole} onValueChange={setAdministratorRole}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="관리자 역할 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {adminRoles.map((role) => (
-                      <SelectItem key={role.key} value={role.key}>
-                        {role.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAdministratorDialogOpen(false)}>
-                취소
-              </Button>
-              <Button onClick={handleSaveAdministrator} disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    저장 중...
-                  </>
-                ) : (
-                  "저장"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* 건물 삭제 확인 다이얼로그 */}
-        <Dialog open={isDeleteBuildingDialogOpen} onOpenChange={(open) => setIsDeleteBuildingDialogOpen(open)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>건물 삭제 확인</DialogTitle>
-              <DialogDescription>정말로 이 건물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteBuildingDialogOpen(false)}>
-                취소
-              </Button>
-              <Button variant="destructive" onClick={confirmDeleteBuilding} disabled={isDeletingBuilding}>
-                {isDeletingBuilding ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    삭제 중...
-                  </>
-                ) : (
-                  "삭제"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* 회차 삭제 확인 다이얼로그 */}
-        <Dialog open={isDeleteRoundDialogOpen} onOpenChange={(open) => setIsDeleteRoundDialogOpen(open)}>
+        {/* 회차 삭제 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteRound"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>회차 삭제 확인</DialogTitle>
               <DialogDescription>
                 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                <br />
+                <br/>
                 <span className="text-red-600 font-bold">★이 회차에 등록된 모든 냉장고 신청 정보가 삭제됩니다.★</span>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteRoundDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
                 취소
               </Button>
-              <Button variant="destructive" onClick={confirmDeleteRound} disabled={isDeletingRound}>
-                {isDeletingRound ? (
+              <Button variant="destructive" onClick={confirmDeleteRound} disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                     삭제 중...
                   </>
                 ) : (
                   "삭제"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* 관리자 삭제 확인 다이얼로그 */}
-        <Dialog
-          open={isDeleteAdministratorDialogOpen}
-          onOpenChange={(open) => setIsDeleteAdministratorDialogOpen(open)}
-        >
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>관리자 삭제 확인</DialogTitle>
-              <DialogDescription>정말로 이 관리자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteAdministratorDialogOpen(false)}>
-                취소
-              </Button>
-              <Button variant="destructive" onClick={confirmDeleteAdministrator} disabled={isDeletingAdministrator}>
-                {isDeletingAdministrator ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    삭제 중...
-                  </>
-                ) : (
-                  "삭제"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* 납부자 목록 초기화 확인 다이얼로그 */}
-        <Dialog open={isResetPayersDialogOpen} onOpenChange={(open) => setIsResetPayersDialogOpen(open)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>납부자 목록 초기화</DialogTitle>
-              <DialogDescription>
-                정말로 납부자 목록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                <br />
-                <br />
-                <b>경고:</b> 초기화를 진행하려면 아래 "초기화" 버튼을 3번 클릭해야 합니다.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsResetPayersDialogOpen(false)}>
-                취소
-              </Button>
-              <Button variant="destructive" onClick={handleResetConfirm} disabled={isResetting}>
-                {isResetting ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    초기화 중...
-                  </>
-                ) : (
-                  <>초기화 ({resetConfirmCount}/3)</>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* 서약서 목록 초기화 확인 다이얼로그 */}
-        <Dialog open={isResetConsentsDialogOpen} onOpenChange={(open) => setIsResetConsentsDialogOpen(open)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>서약서 목록 초기화</DialogTitle>
-              <DialogDescription>
-                정말로 서약서 목록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                <br />
-                <br />
-                <b>경고:</b> 초기화를 진행하려면 아래 "초기화" 버튼을 3번 클릭해야 합니다.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsResetConsentsDialogOpen(false)}>
-                취소
-              </Button>
-              <Button variant="destructive" onClick={handleResetConfirm} disabled={isResetting}>
-                {isResetting ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    초기화 중...
-                  </>
-                ) : (
-                  <>초기화 ({resetConfirmCount}/3)</>
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* 냉장고 신청 목록 초기화 확인 다이얼로그 */}
-        <Dialog open={isResetFridgeDialogOpen} onOpenChange={(open) => setIsResetFridgeDialogOpen(open)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>냉장고 신청 목록 초기화</DialogTitle>
-              <DialogDescription>
-                정말로 냉장고 신청 목록을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                <br />
-                <br />
-                <b>경고:</b> 초기화를 진행하려면 아래 "초기화" 버튼을 3번 클릭해야 합니다.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsResetFridgeDialogOpen(false)}>
-                취소
-              </Button>
-              <Button variant="destructive" onClick={handleResetConfirm} disabled={isResetting}>
-                {isResetting ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    초기화 중...
-                  </>
-                ) : (
-                  <>초기화 ({resetConfirmCount}/3)</>
                 )}
               </Button>
             </DialogFooter>
@@ -1939,7 +1973,13 @@ export default function Settings() {
         </Dialog>
 
         {/* 사업 추가 다이얼로그 */}
-        <Dialog open={isBusinessDialogOpen} onOpenChange={(open) => setIsBusinessDialogOpen(open)}>
+        <Dialog open={isDialogOpen && dialogType === "addBusiness"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
           <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>사업 추가</DialogTitle>
@@ -1958,13 +1998,16 @@ export default function Settings() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsBusinessDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
                 취소
               </Button>
-              <Button onClick={handleSaveBusiness} disabled={isSaving}>
-                {isSaving ? (
+              <Button onClick={handleSaveBusiness} disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                     저장 중...
                   </>
                 ) : (
@@ -1975,25 +2018,34 @@ export default function Settings() {
           </DialogContent>
         </Dialog>
 
-        {/* 사업 삭제 확인 다이얼로그 */}
-        <Dialog open={isDeleteBusinessDialogOpen} onOpenChange={(open) => setIsDeleteBusinessDialogOpen(open)}>
+        {/* 사업 삭제 다이얼로그 */}
+        <Dialog open={isDialogOpen && dialogType === "deleteBusiness"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setIsDialogOpen(false);
+                    setDialogType(null);
+                  }
+                }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>사업 삭제 확인</DialogTitle>
               <DialogDescription>
                 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                <br />
+                <br/>
                 <span className="text-red-600 font-bold">★이 사업에 등록된 모든 신청 정보가 삭제됩니다.★</span>
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteBusinessDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsDialogOpen(false);
+                setDialogType(null);
+              }}>
                 취소
               </Button>
-              <Button variant="destructive" onClick={confirmDeleteBusiness} disabled={isDeletingBusiness}>
-                {isDeletingBusiness ? (
+              <Button variant="destructive" onClick={confirmDeleteBusiness} disabled={isSubmitting}>
+                {isSubmitting ? (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin"/>
                     삭제 중...
                   </>
                 ) : (
