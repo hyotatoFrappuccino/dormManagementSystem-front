@@ -8,6 +8,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  PROJECT_PATH: /home/ubuntu/dorm
 
 # 한번에 1개의 워크플로우만 실행되도록 제한
 concurrency:
@@ -36,17 +37,6 @@ jobs:
         run: |
           git branch -r --contains ${{ github.ref_name }} | grep -w 'origin/main'
 
-      - name: Copy essential files to server
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.HOST }}
-          port: ${{ secrets.PORT }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          passphrase: ${{ secrets.PASSPHRASE }}
-          source: "nginx.conf"
-          target: /home/ubuntu/frontend
-
       - name: Deploy Application
         uses: appleboy/ssh-action@v1
         with:
@@ -58,7 +48,7 @@ jobs:
           script: |
             export RELEASE_VERSION='${{ github.ref_name }}'
 
-            cd /home/ubuntu/frontend
+            cd ${{ env.PROJECT_PATH }}
 
             # docker-compose.yml 파일에서 이미지 태그를 최신 버전으로 교체
             sed -i "s|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${RELEASE_VERSION#v}|g" docker-compose.yml
