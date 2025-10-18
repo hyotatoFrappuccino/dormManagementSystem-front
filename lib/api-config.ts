@@ -1,5 +1,5 @@
 // API 기본 URL 설정
-export const API_BASE_URL = "http://localhost:8080"
+export const API_BASE_URL = ""
 
 // API URL 생성 함수
 export const getApiUrl = (path: string): string => {

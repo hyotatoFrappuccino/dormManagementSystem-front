@@ -2,6 +2,7 @@ import {type ClassValue, clsx} from "clsx"
 import {twMerge} from "tailwind-merge"
 import type {Building, Round} from "@/lib/interfaces"
 import {NotificationMessage} from "@/components/contexts/NotificationContext";
+import { format } from 'date-fns-tz';
 
 // cn 함수
 export function cn(...inputs: ClassValue[]) {
@@ -111,7 +112,7 @@ export function calculateTotalSlots(building: Building): number {
 
 // 현재 날짜가 포함된 회차 반환
 export function findCurrentRound(rounds: Round[], currentDate: Date = new Date()): Round | null {
-  const today = currentDate.toISOString().split("T")[0] // YYYY-MM-DD 형식
+  const today = format(currentDate, 'yyyy-MM-dd', { timeZone: 'Asia/Seoul' });
 
   // 현재 날짜가 포함된 회차 찾기
   const currentRound = rounds.find((round) => {
