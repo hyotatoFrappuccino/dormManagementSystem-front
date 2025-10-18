@@ -50,9 +50,10 @@ jobs:
 
             cd ${{ env.PROJECT_PATH }}
 
-            # docker-compose.yml 파일에서 이미지 태그를 최신 버전으로 교체
-            sed -i "s|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${RELEASE_VERSION#v}|g" docker-compose.yml
-
+            IMAGE_PATH="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+            IMAGE_PATH="${IMAGE_PATH,,}"
+            sed -i "s|image: ${IMAGE_PATH}:.*|image: ${IMAGE_PATH}:${RELEASE_VERSION#v}|g" docker-compose.yml
+            
             # Docker Compose로 애플리케이션 실행
             docker compose pull # 레지스트리에서 최신 이미지 받아오기
             docker compose up -d --remove-orphans # 컨테이너 띄우기
