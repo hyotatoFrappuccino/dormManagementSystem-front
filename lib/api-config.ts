@@ -31,6 +31,7 @@ export const API_PATHS = {
   // 냉장고
   FRIDGE: "/api/v1/fridge",
   FRIDGE_BY_ID: (studentId: string) => `/api/v1/fridge/${studentId}`,
+  FRIDGE_BY_NAME: (name: string) => `/api/v1/fridge/name/${name}`,
 
   // 건물
   BUILDING: "/api/v1/buildings",
