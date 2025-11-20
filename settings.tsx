@@ -1455,15 +1455,6 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
-
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-lg font-semibold mb-4">업데이트 내역</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <Label className="flex w-full items-center">2025.09.01 v1.0.0 정식 출시</Label>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
