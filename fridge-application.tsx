@@ -82,6 +82,22 @@ export default function RefrigeratorApplication() {
   // 이미 신청한 회차인지 확인하는 상태
   const isSelectedRoundApplied = selectedRound ? isRoundApplied(selectedRound.id) : false
 
+  // 동명이인 처리를 위한 상태 추가
+  const [candidateIds, setCandidateIds] = useState<string[]>([])
+  const [showCandidateDialog, setShowCandidateDialog] = useState(false)
+
+  // 신규 기능 알림 상태 추가
+  const [showNewFeatureAlert, setShowNewFeatureAlert] = useState(true)
+
+  useEffect(() => {
+    const isDismissed = localStorage.getItem("fridgeAppNameSearchDismissed")// 알림 종료 날짜 설정 (2025년 11월 28일 자정 이후 자동 종료)
+    const endDate = new Date("2025-11-29T00:00:00")
+    const today = new Date()
+    if (isDismissed || today >= endDate) {
+      setShowNewFeatureAlert(false)
+    }
+  }, [])
+
   // 대시보드 데이터 가져오기 함수
   const fetchDashboardData = async () => {
     try {
@@ -313,6 +329,47 @@ export default function RefrigeratorApplication() {
     // 띄어쓰기 제거
     const trimmedStudentId = studentId.replace(/\s/g, "")
 
+    // 1. 이름 검색 로직 (숫자 2로 시작하지 않는 경우)
+    if (trimmedStudentId.length > 0 && !trimmedStudentId.startsWith("2")) {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        // 이름으로 학번 목록 조회
+        const ids = await get<string[]>(API_PATHS.FRIDGE_BY_NAME(trimmedStudentId))
+
+        if (!ids || ids.length === 0) {
+          const defaultInfo: StudentInfo = {
+            name: trimmedStudentId,
+            isPaid: "NONE",
+            isAgreed: false,
+            building: "-",
+            roomNumber: "-",
+          }
+
+          setUserData(defaultInfo)
+          setDisplayedStudentId("-")
+          setIsLoading(false)
+          return
+        }
+
+        if (ids.length === 1) {
+          // 결과가 1명이면 바로 상세 조회 실행
+          await fetchStudentDetail(ids[0])
+        } else {
+          // 결과가 2명 이상이면 선택 팝업 표시
+          setCandidateIds(ids)
+          setShowCandidateDialog(true)
+          setIsLoading(false)
+        }
+      } catch (error) {
+        console.error("이름 검색 실패:", error)
+        setError("이름 검색 중 오류가 발생했습니다.")
+        setIsLoading(false)
+      }
+      return
+    }
+
     // 학번 유효성 검사
     if (!validateStudentId(trimmedStudentId)) {
       const isValidLength = trimmedStudentId.length === 9 || trimmedStudentId.length === 10
@@ -335,16 +392,34 @@ export default function RefrigeratorApplication() {
       setSubmittedRound(null) // 성공 메시지의 회차 정보도 초기화
     }
 
-    // 현재 선택된 회차 ID 저장
-    const currentSelectedRoundId = selectedRound?.id
-
     setLastSearchedId(trimmedStudentId)
     setStudentIdError(null)
     setIsLoading(true)
     setError(null)
 
+    // 상세 정보 조회 호출
+    await fetchStudentDetail(trimmedStudentId)
+  }
+
+  // 기존 handleSearch 내부의 API 호출 및 상태 설정 로직을 이 함수로 추출
+  const fetchStudentDetail = async (targetId: string) => {
+    // 학번 변경 시 초기화 로직
+    if (targetId !== lastSearchedId) {
+      setIsSubmitted(false)
+      setSubmittedType(null)
+      setSubmittedRound(null)
+    }
+
+    // 현재 선택된 회차 ID 저장
+    const currentSelectedRoundId = selectedRound?.id
+
+    setLastSearchedId(targetId)
+    setStudentIdError(null)
+    setIsLoading(true)
+    setError(null)
+
     try {
-      const response = await get<any>(API_PATHS.FRIDGE_BY_ID(trimmedStudentId))
+      const response = await get<any>(API_PATHS.FRIDGE_BY_ID(targetId))
 
       if (response && response.defaultInfo) {
         // 데이터 구조 검증 및 안전한 매핑
@@ -358,7 +433,7 @@ export default function RefrigeratorApplication() {
           }
 
           setUserData(studentInfo)
-          setDisplayedStudentId(trimmedStudentId)
+          setDisplayedStudentId(targetId)
 
           // 건물 ID 설정
           const buildingId = getBuildingIdByName(studentInfo.building)
@@ -442,6 +517,11 @@ export default function RefrigeratorApplication() {
     }
   }
 
+  const handleSelectCandidate = async (selectedId: string) => {
+    setShowCandidateDialog(false)
+    await fetchStudentDetail(selectedId)
+  }
+
   // handleSubmit 함수 수정 - 마감 체크 로직 개선
   const handleSubmit = async (forceSubmit = false) => {
     if (!userData) {
@@ -508,7 +588,7 @@ export default function RefrigeratorApplication() {
         setError(null)
 
         // 신청 정보 다시 조회하되, 선택된 회차는 유지
-        const trimmedStudentId = studentId.replace(/\s/g, "")
+        const trimmedStudentId = displayedStudentId.replace(/\s/g, "")
         setIsLoading(true)
 
         try {
@@ -609,6 +689,29 @@ export default function RefrigeratorApplication() {
     <div className="max-w-3xl mx-auto relative">
       <h2 className="text-2xl font-semibold mb-4 md:block hidden">냉장고 신청/연장</h2>
 
+      {/* ✨ 이름 검색 기능 추가 알림 */}
+      {showNewFeatureAlert && (
+          <Alert className="mb-4 bg-yellow-50 border-yellow-200 text-yellow-800">
+            <AlertDescription className="flex justify-between items-center w-full">
+            <span className="flex items-center">
+              <span role="img" aria-label="sparkles" className="mr-2">✨</span>
+              New! 이제 이름으로 간편하게 조회가 가능합니다!
+            </span>
+              <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-0 h-auto text-yellow-800 hover:text-yellow-900"
+                  onClick={() => {
+                    setShowNewFeatureAlert(false)
+                    localStorage.setItem("fridgeAppNameSearchDismissed", "true")
+                  }}
+              >
+                닫기
+              </Button>
+            </AlertDescription>
+          </Alert>
+      )}
+
       {/* 메인 콘텐츠 영역 */}
       <div className="space-y-6">
         <Card>
@@ -620,7 +723,7 @@ export default function RefrigeratorApplication() {
                 </Label>
                 <Input
                   id="studentId"
-                  placeholder="학번을 입력하세요"
+                  placeholder="이름 또는 학번을 입력하세요"
                   value={studentId}
                   onChange={(e) => {
                     setStudentId(e.target.value)
@@ -933,6 +1036,35 @@ export default function RefrigeratorApplication() {
               }}
             >
               신청하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 동명이인 선택 Dialog */}
+      <Dialog open={showCandidateDialog} onOpenChange={setShowCandidateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>검색 결과 선택</DialogTitle>
+            <DialogDescription>
+              동명이인이 존재합니다. 학번을 선택해주세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-4">
+            {candidateIds.map((id) => (
+                <Button
+                    key={id}
+                    variant="outline"
+                    className="w-full justify-start text-lg h-auto py-3"
+                    onClick={() => handleSelectCandidate(id)}
+                >
+                  <span className="font-medium mr-2">{id}</span>
+                </Button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setShowCandidateDialog(false)}>
+              취소
             </Button>
           </DialogFooter>
         </DialogContent>
