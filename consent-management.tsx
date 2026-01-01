@@ -238,7 +238,7 @@ const ConsentManagement = () => {
   }, [])
 
   return (
-    <div className="max-w-3xl mx-auto">
+      <div className="max-w-[870px] mx-auto">
       <h1 className="text-2xl font-semibold mb-4 md:block hidden">서약서 관리</h1>
 
       <Card className="mb-6">
