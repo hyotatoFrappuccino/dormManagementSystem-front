@@ -238,7 +238,7 @@ const ConsentManagement = () => {
   }, [])
 
   return (
-    <div className="max-w-3xl mx-auto">
+      <div className="max-w-[870px] mx-auto">
       <h1 className="text-2xl font-semibold mb-4 md:block hidden">서약서 관리</h1>
 
       <Card className="mb-6">
@@ -372,7 +372,7 @@ const ConsentManagement = () => {
         <CardContent className="p-0 sm:p-2">
           {/* Replace the entire table container with the fridge-management style */}
           <div className="relative">
-            <div ref={tableBodyRef} className="overflow-auto h-[calc(100vh-290px)] min-h-[410px] w-full rounded-lg">
+            <div ref={tableBodyRef} className="overflow-auto h-[calc(100vh-260px)] min-h-[410px] w-full rounded-lg">
               <table className="w-full border-collapse">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>

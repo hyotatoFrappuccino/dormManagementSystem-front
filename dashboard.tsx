@@ -5,6 +5,9 @@ import {useState, useEffect} from "react"
 import {Home, FileText, Users, Menu, Settings, FileCheck, RefreshCw} from "lucide-react"
 import {Button} from "@/components/ui/button"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import Snowfall from 'react-snowfall'
+import Cookies from 'js-cookie'
+import {Snowflake} from "lucide-react";
 
 import RefrigeratorApplication from "./fridge-application"
 import FridgeManagement from "./fridge-management"
@@ -84,6 +87,27 @@ export default function Dashboard() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [buildingDataLoaded, setBuildingDataLoaded] = useState(false)
+  const [showSnow, setShowSnow] = useState<boolean>(true)
+
+  useEffect(() => {
+    const winter = isWinterSeason();
+    const savedSnowPreference = Cookies.get('show-snow')
+    if (savedSnowPreference === 'false') {
+        setShowSnow(false)
+    } else {
+        setShowSnow(winter)
+    }
+  }, [])
+  const toggleSnow = () => {
+    const newValue = !showSnow
+    setShowSnow(newValue)
+    Cookies.set('show-snow', String(newValue), { expires: 3650 })
+  }
+
+  const isWinterSeason = () => {
+    const currentMonth = new Date().getMonth();
+    return currentMonth === 11 || currentMonth === 0;
+  };
 
   // 총 이용자 수를 계산
   const calculateTotalUsers = () => {
@@ -712,66 +736,97 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* 모바일 헤더 - 햄버거 메뉴와 제목 */}
-      <div
-        className="fixed top-0 left-0 right-0 bg-white z-50 md:hidden flex items-center h-14 px-4 border-b shadow-sm">
-        <Button variant="ghost" size="icon" className="mr-3" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          <Menu className="h-6 w-6"/>
-        </Button>
-        <h1 className="text-lg font-medium">{activeMenu}</h1>
-      </div>
+    <div style={{ position: 'relative', background: '#282c34' }}>
+        {showSnow && (
+          <Snowfall
+              style={{pointerEvents: 'none'}}
+          />
+        )}
 
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 transform ${
-          isSidebarOpen ? "translate-x-0 pt-[70px]" : "-translate-x-full"
-        } md:relative md:translate-x-0 md:pt-0 md:h-screen transition duration-200 ease-in-out z-40 w-48 bg-white shadow-md flex flex-col`}
-      >
-        <div className="p-4 border-b">
-          <h1 className="text-lg font-semibold whitespace-nowrap">통합관리시스템</h1>
+        <div className="flex h-screen bg-gray-50">
+          {/* 모바일 헤더 - 햄버거 메뉴와 제목 */}
+          <div
+            className="fixed top-0 left-0 right-0 bg-white z-50 md:hidden flex items-center h-14 px-4 border-b shadow-sm">
+            <Button variant="ghost" size="icon" className="mr-3" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+              <Menu className="h-6 w-6"/>
+            </Button>
+            <h1 className="text-lg font-medium">{activeMenu}</h1>
+          </div>
+
+          {/* Sidebar */}
+          <div
+            className={`fixed inset-y-0 left-0 transform ${
+              isSidebarOpen ? "translate-x-0 pt-[70px]" : "-translate-x-full"
+            } md:relative md:translate-x-0 md:pt-0 md:h-screen transition duration-200 ease-in-out z-40 w-48 bg-white shadow-md flex flex-col`}
+          >
+            <div className="p-4 border-b">
+              <h1 className="text-lg font-semibold whitespace-nowrap">통합관리시스템</h1>
+            </div>
+
+            <nav className="flex flex-col py-4 flex-1">
+              {menuItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    href="#"
+                    key={item.name}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActiveMenu(item.name)
+                      setIsSidebarOpen(false)
+                    }}
+                    className={`flex items-center gap-3 py-3 px-4 text-sm hover:bg-gray-50 ${
+                      activeMenu === item.name ? "bg-gray-50 text-blue-600" : "text-gray-600"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4"/>
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </nav>
+
+            {/* 사용자 프로필 및 로그아웃 버튼 */}
+            <UserProfile/>
+          </div>
+
+          {/* Overlay for mobile */}
+          {isSidebarOpen && (
+            <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}/>
+          )}
+
+          {/* Main content */}
+          <NotificationProvider>
+            <NotificationInitializer/>
+            <div className="flex-1 p-6 md:p-8 pt-[70px] md:pt-8 overflow-x-hidden">
+              <div className="w-full">{renderContent()}</div>
+            </div>
+            <Notification/>
+          </NotificationProvider>
+
+          {/* 5. 우측 하단 플로팅 토글 버튼 */}
+          {isWinterSeason() && (
+            <div className="fixed bottom-6 right-6 z-[10000]">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={toggleSnow}
+                    className={`rounded-full shadow-lg transition-all duration-300 ${
+                        showSnow
+                            ? "bg-white/80 backdrop-blur-sm border-blue-100"
+                            : "bg-gray-100/50 border-transparent opacity-70"
+                    }`}
+                    title={showSnow ? "눈 끄기" : "눈 켜기"}
+                >
+                    <Snowflake
+                        className={`h-5 w-5 transition-colors ${
+                            showSnow ? "text-blue-400" : "text-gray-400"
+                        }`}
+                    />
+                </Button>
+            </div>
+          )}
         </div>
-
-        <nav className="flex flex-col py-4 flex-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                href="#"
-                key={item.name}
-                onClick={(e) => {
-                  e.preventDefault()
-                  setActiveMenu(item.name)
-                  setIsSidebarOpen(false)
-                }}
-                className={`flex items-center gap-3 py-3 px-4 text-sm hover:bg-gray-50 ${
-                  activeMenu === item.name ? "bg-gray-50 text-blue-600" : "text-gray-600"
-                }`}
-              >
-                <Icon className="h-4 w-4"/>
-                {item.name}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* 사용자 프로필 및 로그아웃 버튼 */}
-        <UserProfile/>
-      </div>
-
-      {/* Overlay for mobile */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/20 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}/>
-      )}
-
-      {/* Main content */}
-      <NotificationProvider>
-        <NotificationInitializer/>
-        <div className="flex-1 p-6 md:p-8 pt-[70px] md:pt-8 overflow-x-hidden">
-          <div className="w-full">{renderContent()}</div>
-        </div>
-        <Notification/>
-      </NotificationProvider>
     </div>
   )
 }

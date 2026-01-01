@@ -401,9 +401,9 @@ export default function FridgeManagement() {
     // 실제로 표시되는 회차 수 계산
     const displayRoundCount = showLastTwoRoundsOnly ? Math.min(2, rounds.length) : rounds.length
 
-    if (displayRoundCount <= 4) return "max-w-3xl"
-    if (displayRoundCount <= 6) return "max-w-4xl"
-    if (displayRoundCount <= 7) return "max-w-5xl"
+    if (displayRoundCount <= 1) return "max-w-3xl"
+    if (displayRoundCount <= 4) return "max-w-4xl"
+    if (displayRoundCount <= 6) return "max-w-5xl"
     if (displayRoundCount <= 9) return "max-w-6xl"
     return "max-w-full"
   }, [rounds.length, showLastTwoRoundsOnly])
